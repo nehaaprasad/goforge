@@ -1,0 +1,11 @@
+export { ArchitectureSection } from "./architecture-section";
+export { DemoPreviewSection } from "./demo-preview-section";
+export { FaqSection } from "./faq-section";
+export { FeaturesGrid } from "./features-grid";
+export { FinalCta } from "./final-cta";
+export { HeroSection } from "./hero-section";
+export { HowItWorks } from "./how-it-works";
+export { PageShell } from "./page-shell";
+export { SiteFooter } from "./site-footer";
+export { SiteHeader } from "./site-header";
+export { TrustStrip } from "./trust-strip";
