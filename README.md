@@ -1,6 +1,6 @@
-# PatchFlow
+# GoForge
 
-PatchFlow is an AI-assisted engineering workflow that converts natural-language tickets into validated pull requests for Go monorepos.
+ GoForge is an AI-assisted engineering workflow that converts natural-language tickets into validated pull requests for Go monorepos.
 
 The system is designed around **clarity, safety, and reviewability**:
 - plan the work first
