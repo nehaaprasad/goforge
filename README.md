@@ -12,7 +12,7 @@ The system is designed around **clarity, safety, and reviewability**:
 
 ## Vision
 
-PatchFlow acts as a developer cockpit for ticket-to-PR automation:
+GoForge acts as a developer cockpit for ticket-to-PR automation:
 
 `Ticket -> Planner -> Context Retrieval -> Code Agent -> Test Agent -> Validation -> PR`
 
