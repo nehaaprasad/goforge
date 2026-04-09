@@ -23,6 +23,8 @@ class StepState(BaseModel):
 
 class RunCreateRequest(BaseModel):
     task: str = Field(min_length=1, max_length=32_000)
+    """Optional public HTTPS git URL; when set, the pipeline runs against a cached clone."""
+    repo_url: str | None = Field(default=None, max_length=2048)
 
 
 class RunCreateResponse(BaseModel):
@@ -71,6 +73,7 @@ class HealthResponse(BaseModel):
     ok: bool = True
     repo_root: str
     repo_exists: bool
+    remote_clone_enabled: bool = True
     go_available: bool = False
     git_available: bool = False
     go_version_line: str | None = None

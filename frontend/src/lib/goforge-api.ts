@@ -24,13 +24,19 @@ async function readHttpError(res: Response): Promise<string> {
 
 export async function createRun(
   apiBase: string,
-  task: string
+  task: string,
+  options?: { repoUrl?: string | null }
 ): Promise<RunCreateResponse> {
   const base = apiBase.replace(/\/$/, "");
+  const repo_url = (options?.repoUrl ?? "").trim();
+  const body: { task: string; repo_url?: string } = { task };
+  if (repo_url) {
+    body.repo_url = repo_url;
+  }
   const res = await fetch(`${base}/api/run`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ task }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     throw new Error(await readHttpError(res));

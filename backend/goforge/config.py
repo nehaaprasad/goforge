@@ -12,6 +12,10 @@ def _default_db_path() -> Path:
     return Path(__file__).resolve().parent.parent / "data" / "goforge.db"
 
 
+def _default_clone_cache_root() -> Path:
+    return Path(__file__).resolve().parent.parent / "data" / "clones"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="GOFORGE_",
@@ -42,6 +46,13 @@ class Settings(BaseSettings):
 
     # Validation: apply + go test retries when LLM is enabled (mock path uses 1 attempt).
     validation_max_attempts: int = Field(default=3, ge=1, le=20)
+
+    # Optional: clone a remote HTTPS repo for a run (POST /api/run { "repo_url": "https://..." }).
+    remote_clone_enabled: bool = True
+    clone_cache_root: Path = Field(default_factory=_default_clone_cache_root)
+    clone_timeout_s: float = Field(default=600.0, ge=30.0, le=7200.0)
+    # Comma-separated hostnames (empty = github.com, gitlab.com, bitbucket.org, codeberg.org).
+    remote_allowed_hosts: str = ""
 
     # Optional GitHub PR (fine-grained or classic PAT with repo scope). If unset, PR step logs skip.
     github_token: str | None = None

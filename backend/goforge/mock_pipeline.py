@@ -19,6 +19,10 @@ async def _delay(seconds: float) -> None:
     await asyncio.sleep(seconds)
 
 
+def _is_remote_clone_path(repo_root: str) -> bool:
+    return "/clones/" in repo_root.replace("\\", "/")
+
+
 def _set_step_status(rec: RunRecord, name: str, status: StepStatus) -> None:
     for s in rec.steps:
         if s.name == name:
@@ -193,7 +197,12 @@ async def run_mock_pipeline(rec: RunRecord) -> None:
         rec.status = "running"
         await store.emit(rec.run_id, rec.snapshot())
 
-        await _append_log(rec, "Run started against local sandbox repository.")
+        await _append_log(
+            rec,
+            "Run started against cached remote clone."
+            if _is_remote_clone_path(rec.repo_root)
+            else "Run started against local sandbox repository.",
+        )
         await _append_log(
             rec,
             "Workspace: git baseline ready (reset to HEAD before patch).",

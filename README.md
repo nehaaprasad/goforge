@@ -24,14 +24,12 @@ It is intentionally built with strict stage boundaries and machine-readable cont
 
 ## Current Scope (Vertical Slice)
 
-This repository currently targets a **single local monorepo workflow** for fast iteration:
+PatchFlow runs against either:
 
-- repository source is a local filesystem path
-- no git clone from URL yet
-- no external network dependency required for the first slice
-- sandbox target repository path is `./sandbox-repo`
+- **Local path** — default `GOFORGE_REPO_ROOT` / `./sandbox-repo` (no network required for the default flow), or
+- **Public HTTPS remote** — `POST /api/run` with `{ "task": "...", "repo_url": "https://github.com/org/repo" }` (or use the optional URL field on `/workflow`). The server **validates** the host (allowlist + DNS checks) and **clones** into `GOFORGE_CLONE_CACHE_ROOT` (default `backend/data/clones/`), then runs the same pipeline on that tree.
 
-Remote repository ingestion and clone support are planned for a later phase.
+Private repos that need credentials are not supported via URL yet (use a local clone path).
 
 ---
 
@@ -43,8 +41,8 @@ Remote repository ingestion and clone support are planned for a later phase.
 - Tailwind CSS
 - shadcn-style UI components
 
-### Planned Backend (orchestration engine)
-- Python + FastAPI
+### Backend (orchestration engine)
+- Python + FastAPI — run lifecycle, PatchFlow pipeline, SSE, optional SQLite persistence
 
 ### Target codebase
 - Go monorepo (modified by generated patches/diffs)
@@ -56,17 +54,20 @@ Remote repository ingestion and clone support are planned for a later phase.
 ```text
 goforge/
   frontend/         # PatchFlow marketing + UI shell (implemented)
-  backend/          # FastAPI orchestration API (skeleton + mock pipeline)
+  backend/          # FastAPI orchestration API (PatchFlow pipeline, agents, RAG, validation, optional PR)
   sandbox-repo/     # Local Go repo target for the first vertical slice
 ```
 
-Planned expansion (later phases):
+Backend package layout (current):
 
 ```text
 goforge/
-  backend/
-    goforge/        # Python package (current)
-    # future: agents/, rag/, validation/, github/ modules as logic grows
+  backend/goforge/
+    agents/         # planner, codegen, test agent
+    rag/            # chunk, embed, retrieval
+    validation/     # go build / go test
+    repo/, github/  # workspace, optional PR
+    persistence/    # optional SQLite run store
 ```
 
 ---
@@ -110,16 +111,17 @@ The landing mockups reflect the same PatchFlow layout model:
 The backend is a FastAPI service that owns run lifecycle and exposes the API contracts the UI will consume.
 
 ### What works today
-- `POST /api/run` creates a run against the local repo path and runs the **PatchFlow pipeline**: **Planner** → **Context Retrieval** (**RAG**: chunk `.go` files, **embeddings**, **top‑k** cosine retrieval when `GOFORGE_OPENAI_API_KEY` is set, prepended to the bounded **full-file** bundle) → **Code Generation** (unified diff + **`notes`**, mock or LLM JSON) → **Test Generation** (structured **`tests`** paths + **`coverage_focus`**, mock or LLM JSON) → **Validation** (`git apply` + `go build ./...` + `go test ./...`). **After initializing** a local git baseline in `sandbox-repo` on first use, each run **resets** to `HEAD` before applying, then **resets** again after the run so the next run starts clean.
+- `POST /api/run` accepts `{ "task": "..." }` for the **local** repo (`GOFORGE_REPO_ROOT`), or `{ "task": "...", "repo_url": "https://..." }` to **clone or refresh** a public HTTPS repo into the cache and run there. Then the **PatchFlow pipeline** runs: **Planner** → **Context Retrieval** (**RAG** when configured) → **Code Generation** (unified diff + **`notes`**) → **Test Generation** (**`tests`** + **`coverage_focus`**) → **Validation** (`git apply` + `go build ./...` + `go test ./...`). **After initializing** a local git baseline in `sandbox-repo` on first use (local mode), each run **resets** to `HEAD` before applying, then **resets** again after the run so the next run starts clean.
 - With an API key, **Validation** can **retry** up to `GOFORGE_VALIDATION_MAX_ATTEMPTS` times (default 3) on the same run, feeding the previous failure back into the code agent.
 - `GET /api/run/{id}` returns the latest snapshot (steps, logs, diff, **`code_notes`**, **`test_paths`**, **`coverage_focus`**, `pr_url`, errors).
 - `GET /api/run/{id}/stream` streams **SSE** snapshots as the pipeline advances.
-- `GET /health` reports whether `./sandbox-repo` exists on disk and whether **`go`** and **`git`** are on `PATH` (with version lines).
+- `GET /health` reports whether the default local repo path exists, whether **remote clone** is enabled, and whether **`go`** and **`git`** are on `PATH` (with version lines).
 - `GET /api/pr/{id}` returns **run status**, **`pr_url`** (if a PR was opened), and **`error`** (if any). PR creation is **optional** (see GitHub below).
 - If **`go build ./...`** or **`go test ./...`** fails after retries are exhausted, the run ends in **`failed`** with Validation marked **`failed`** and logs containing the failing output.
 
 ### Configuration
 - `GOFORGE_REPO_ROOT`: absolute or relative path to the local Go repo (default: repository `sandbox-repo/` next to this README).
+- **Remote clone** (optional): `GOFORGE_REMOTE_CLONE_ENABLED` (default `true`), `GOFORGE_CLONE_CACHE_ROOT`, `GOFORGE_CLONE_TIMEOUT_S`, `GOFORGE_REMOTE_ALLOWED_HOSTS` (comma-separated; empty defaults to `github.com`, `gitlab.com`, `bitbucket.org`, `codeberg.org`).
 
 **Optional LLM** (OpenAI-compatible Chat Completions JSON): when `GOFORGE_OPENAI_API_KEY` is set, **Planner**, **Code Generation**, and **Test Generation** call the API; otherwise the planner uses a deterministic mock plan, codegen uses a fixed sandbox **mock diff** (see `backend/goforge/default_diff.py`), and the test agent uses heuristics from the diff. Planner failures fall back to mock output with a **risk** line; codegen/test failures fall back to mock output with a log line. See `backend/.env.example` for timeouts and models.
 
@@ -207,24 +209,21 @@ npm run build
 - frontend layout and storytelling surface
 - product mock sections aligned to orchestrator workflow
 
-### Phase B (In progress / baseline done)
-- FastAPI backend skeleton
-- run lifecycle + in-memory store
-- mock pipeline + SSE stream
-- frontend `/workflow` page wired to the API (dev)
+### Phase B (Done — vertical slice)
+- FastAPI API: run lifecycle, SSE, structured snapshots, optional SQLite persistence
+- frontend `/workflow` wired to the API
 
-### Phase C (In progress / baseline done)
-- local `./sandbox-repo` Go module + **git apply** of mock diff + **`go test ./...`** + worktree reset
-- next: **real agent diffs**, **retry/fix** loop, then **PR automation**
+### Phase C (Done — local repo path)
+- `./sandbox-repo` Go module + **git apply** + **`go build` / `go test`** + reset between runs
+- Planner / codegen / test agent: **LLM path when `GOFORGE_OPENAI_API_KEY` is set**, deterministic mock otherwise
+- Validation **retry** loop feeding failures back to codegen
+- RAG (chunk + embeddings + top‑k) when key + `GOFORGE_RAG_ENABLED` allow
 
-### Phase D
-- branch/commit/PR automation
-- retry/fix loop for validation failures
+### Phase D (Done — optional)
+- GitHub branch / commit / push / PR when token + repo configured
 
-### Phase E
-- error handling polish
-- production hardening and observability
-- optional remote repository ingestion
+### Phase E (Ongoing / optional)
+- polish, observability, private-repo auth for remote URLs
 
 ---
 
@@ -244,4 +243,4 @@ PatchFlow development follows these constraints:
 
 - `sandbox-repo/` is a **small real Go module** (see `go.mod` and `internal/greet/`) so `go test ./...` can pass in the Validation stage.
 - On first pipeline run, the backend may **`git init`** that directory (ignored by git via `sandbox-repo/.git/` in `.gitignore`) so patches can be applied and reverted safely.
-- Planner/code/test agents remain **mock** until LLM integration; **patch apply + go build + go test** are real.
+- With **`GOFORGE_OPENAI_API_KEY`**, planner/code/test use the LLM; without it they use deterministic mocks. **Patch apply + go build + go test** are always real against `sandbox-repo`.

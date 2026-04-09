@@ -37,6 +37,11 @@ function basenamePath(p: string): string {
   return parts[parts.length - 1] ?? p;
 }
 
+/** Backend caches remote clones under a .../clones/<id>/ directory. */
+function isRemoteClonePath(p: string): boolean {
+  return /[/\\]clones[/\\]/.test(p);
+}
+
 function stepDotClass(
   state: "idle" | "running" | "done" | "failed"
 ): string {
@@ -89,6 +94,8 @@ export function LiveWorkbench() {
   const [task, setTask] = useState(
     "Add structured logging to the HTTP middleware"
   );
+  /** Optional public https:// git URL; empty = GOFORGE_REPO_ROOT / sandbox-repo. */
+  const [repoUrl, setRepoUrl] = useState("");
   const [runId, setRunId] = useState<string | null>(null);
   const [postError, setPostError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
@@ -117,17 +124,23 @@ export function LiveWorkbench() {
     setIsStarting(true);
     setRunId(null);
     try {
-      const { run_id } = await createRun(apiBase, trimmed);
+      const { run_id } = await createRun(apiBase, trimmed, {
+        repoUrl: repoUrl.trim() || null,
+      });
       setRunId(run_id);
     } catch (e) {
       setPostError(e instanceof Error ? e.message : "Failed to start run");
     } finally {
       setIsStarting(false);
     }
-  }, [apiBase, task]);
+  }, [apiBase, task, repoUrl]);
 
   const combinedError = postError ?? streamError;
   const repoLabel = snapshot ? basenamePath(snapshot.repo_root) : "sandbox-repo";
+  const repoSource =
+    snapshot && isRemoteClonePath(snapshot.repo_root)
+      ? "remote clone"
+      : "local";
   const val = validationCaption(snapshot?.steps, snapshot?.status);
 
   const activeChunk = diffChunks[fileIdx] ?? diffChunks[0];
@@ -179,7 +192,7 @@ export function LiveWorkbench() {
                 {repoLabel}
               </span>
               <ChevronRight className="size-4 shrink-0 text-zinc-600" aria-hidden />
-              <span className="truncate text-zinc-500">local</span>
+              <span className="truncate text-zinc-500">{repoSource}</span>
             </div>
             <label className="sr-only" htmlFor="patchflow-task">
               Task
@@ -191,6 +204,19 @@ export function LiveWorkbench() {
               onChange={(e) => setTask(e.target.value)}
               placeholder="Describe the change…"
               className="w-full min-w-0 rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-100 outline-none ring-indigo-500/40 placeholder:text-zinc-600 focus:border-indigo-500/50 focus:ring-2 sm:max-w-xl"
+            />
+            <label className="sr-only" htmlFor="patchflow-repo-url">
+              Repository URL optional
+            </label>
+            <input
+              id="patchflow-repo-url"
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              value={repoUrl}
+              onChange={(e) => setRepoUrl(e.target.value)}
+              placeholder="Optional: https://github.com/org/repo (public HTTPS clone)"
+              className="w-full min-w-0 rounded-md border border-white/10 bg-black/20 px-3 py-1.5 text-xs text-zinc-300 outline-none ring-indigo-500/40 placeholder:text-zinc-600 focus:border-indigo-500/50 focus:ring-2 sm:max-w-xl"
             />
           </div>
           <div className="flex items-center gap-2">

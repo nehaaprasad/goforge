@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from goforge.config import settings
 from goforge.mock_pipeline import run_mock_pipeline
 from goforge.persistence.sqlite_runs import init_db, mark_stale_runs_failed
+from goforge.repo.remote_clone import resolve_remote_repo_root
 from goforge.run_store import store
 from goforge.schemas import (
     HealthResponse,
@@ -67,6 +68,7 @@ async def health() -> HealthResponse:
     return HealthResponse(
         repo_root=str(root),
         repo_exists=root.is_dir(),
+        remote_clone_enabled=settings.remote_clone_enabled,
         go_available=go_v is not None,
         git_available=git_v is not None,
         go_version_line=go_v,
@@ -80,15 +82,43 @@ async def health() -> HealthResponse:
 
 @app.post("/api/run", response_model=RunCreateResponse)
 async def create_run(body: RunCreateRequest) -> RunCreateResponse:
-    root = settings.repo_root.resolve()
-    if not root.is_dir():
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"Local repo path does not exist or is not a directory: {root}. "
-                "Create ./sandbox-repo or set GOFORGE_REPO_ROOT."
-            ),
-        )
+    url = (body.repo_url or "").strip() or None
+
+    if url:
+        if not settings.remote_clone_enabled:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Remote repository cloning is disabled "
+                    "(GOFORGE_REMOTE_CLONE_ENABLED=false)."
+                ),
+            )
+        try:
+            root = await asyncio.to_thread(
+                resolve_remote_repo_root,
+                url,
+                cache_root=settings.clone_cache_root,
+                allowed_hosts_raw=settings.remote_allowed_hosts,
+                timeout_s=settings.clone_timeout_s,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Git clone or update failed: {exc}",
+            ) from exc
+    else:
+        root = settings.repo_root.resolve()
+        if not root.is_dir():
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Local repo path does not exist or is not a directory: {root}. "
+                    "Create ./sandbox-repo, set GOFORGE_REPO_ROOT, or pass "
+                    "`repo_url` with a public https:// clone URL."
+                ),
+            )
 
     rec = await store.create(body.task, repo_root=str(root))
     rec.pipeline_task = asyncio.create_task(run_mock_pipeline(rec))

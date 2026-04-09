@@ -10,6 +10,7 @@ services:
     environment:
       GOFORGE_REPO_ROOT: /workspace/sandbox-repo
       GOFORGE_DB_PATH: /data/goforge.db
+      GOFORGE_CLONE_CACHE_ROOT: /data/clones
       GOFORGE_CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
       # Optional: paste secrets at runtime (do not commit real keys)
       # GOFORGE_OPENAI_API_KEY: ${GOFORGE_OPENAI_API_KEY}
