@@ -108,7 +108,7 @@ The landing mockups reflect the same PatchFlow layout model:
 The backend is a FastAPI service that owns run lifecycle and exposes the API contracts the UI will consume.
 
 ### What works today
-- `POST /api/run` creates a run against the local repo path and runs a **hybrid** pipeline: early stages are **mock** (Planner → Test Generation), then **real `go test ./...`** during **Validation** on `./sandbox-repo`.
+- `POST /api/run` creates a run against the local repo path and runs a **hybrid** pipeline: early stages are **mock** (Planner → Test Generation), then **Validation** applies the proposed **unified diff** with **`git apply`** (after initializing a local git baseline in `sandbox-repo` on first use), runs **`go test ./...`**, then **resets** the worktree to `HEAD` so the next run starts clean.
 - `GET /api/run/{id}` returns the latest snapshot (steps, logs, mock diff, errors).
 - `GET /api/run/{id}/stream` streams **SSE** snapshots as the pipeline advances.
 - `GET /health` reports whether `./sandbox-repo` exists on disk.
@@ -196,10 +196,9 @@ npm run build
 - mock pipeline + SSE stream
 - frontend `/workflow` page wired to the API (dev)
 
-### Phase C
-- planner -> code -> test pipeline integration
-- local `./sandbox-repo` operations
-- validation loop with Go checks
+### Phase C (In progress / baseline done)
+- local `./sandbox-repo` Go module + **git apply** of mock diff + **`go test ./...`** + worktree reset
+- next: **real agent diffs**, **retry/fix** loop, then **PR automation**
 
 ### Phase D
 - branch/commit/PR automation
@@ -227,4 +226,5 @@ PatchFlow development follows these constraints:
 ## Notes
 
 - `sandbox-repo/` is a **small real Go module** (see `go.mod` and `internal/greet/`) so `go test ./...` can pass in the Validation stage.
-- Planner/code/test agents remain **mock** until LLM integration; the **validation gate is real**.
+- On first pipeline run, the backend may **`git init`** that directory (ignored by git via `sandbox-repo/.git/` in `.gitignore`) so patches can be applied and reverted safely.
+- Planner/code/test agents remain **mock** until LLM integration; **patch apply + go test** are real.
