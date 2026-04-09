@@ -45,3 +45,7 @@ class HealthResponse(BaseModel):
     ok: bool = True
     repo_root: str
     repo_exists: bool
+    go_available: bool = False
+    git_available: bool = False
+    go_version_line: str | None = None
+    git_version_line: str | None = None
