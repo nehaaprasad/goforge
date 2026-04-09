@@ -20,7 +20,7 @@ export function FinalCta() {
             for review—starting with your local sandbox repo.
           </p>
           <Link
-            href="#demo"
+            href="/workflow"
             className={cn(
               buttonVariants({ size: "lg" }),
               "mt-8 inline-flex h-11 bg-gradient-to-r from-indigo-500 to-violet-600 px-8 text-sm font-semibold text-white shadow-xl shadow-indigo-500/30 hover:from-indigo-400 hover:to-violet-500"
