@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run from repository root: bash scripts/verify-patchflow.sh
+# Run from repository root: bash scripts/verify-goforage.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
