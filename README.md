@@ -1,6 +1,6 @@
 # GoForge
 
-GoForge (repository **goforge**) is an AI-assisted engineering workflow platform. Its first product surface, **PatchFlow**, converts natural-language tickets into validated pull requests for Go monorepos.
+GoForge (repository **goforge**) is an AI-assisted engineering workflow platform. Its first product surface, **GoForage**, converts natural-language tickets into validated pull requests for Go monorepos.
 
 The system is designed around **clarity, safety, and reviewability**:
 - plan the work first
@@ -10,11 +10,9 @@ The system is designed around **clarity, safety, and reviewability**:
 
 ---
 
-
-  
 ## Vision
 
-PatchFlow (within GoForge) acts as a developer cockpit for ticket-to-PR automation:
+GoForage (within GoForge) acts as a developer cockpit for ticket-to-PR automation:
 
 `Ticket -> Planner -> Context Retrieval -> Code Agent -> Test Agent -> Validation -> PR`
 
@@ -22,7 +20,7 @@ It is intentionally built with strict stage boundaries and machine-readable cont
 
 ### Architecture diagram
 
-High-level flow: you describe the change in the browser; the API creates a run, walks the pipeline in order, validates with **git** and **Go** on real files, and optionally persists run snapshots to SQLite. The editable Mermaid source also lives in `docs/patchflow-system-diagram.mmd`.
+High-level flow: you describe the change in the browser; the API creates a run, walks the pipeline in order, validates with **git** and **Go** on real files, and optionally persists run snapshots to SQLite. The editable Mermaid source also lives in `docs/goforage-system-diagram.mmd`.
 
 ```mermaid
 flowchart TB
@@ -63,7 +61,7 @@ flowchart TB
 
 ## Current Scope (Vertical Slice)
 
-PatchFlow runs against either:
+GoForage runs against either:
 
 - **Local path** — default `GOFORGE_REPO_ROOT` / `./sandbox-repo` (no network required for the default flow), or
 - **HTTPS remote** — `POST /api/run` with `{ "task": "...", "repo_url": "https://github.com/org/repo" }` (or the optional URL field on `/workflow`). The server **validates** the host (allowlist + DNS checks) and **clones** into `GOFORGE_CLONE_CACHE_ROOT` (default `backend/data/clones/`), then runs the same pipeline on that tree.
@@ -80,7 +78,7 @@ PatchFlow runs against either:
 - shadcn-style UI components
 
 ### Backend (orchestration engine)
-- Python + FastAPI — run lifecycle, PatchFlow pipeline, SSE, optional SQLite persistence
+- Python + FastAPI — run lifecycle, GoForage pipeline, SSE, optional SQLite persistence
 
 ### Target codebase
 - Go monorepo (modified by generated patches/diffs)
@@ -91,8 +89,8 @@ PatchFlow runs against either:
 
 ```text
 goforge/
-  frontend/         # PatchFlow marketing + UI shell (implemented)
-  backend/          # FastAPI orchestration API (PatchFlow pipeline, agents, RAG, validation, optional PR)
+  frontend/         # GoForage marketing + UI shell (implemented)
+  backend/          # FastAPI orchestration API (GoForage pipeline, agents, RAG, validation, optional PR)
   sandbox-repo/     # Local Go repo target for the first vertical slice
 ```
 
@@ -137,7 +135,7 @@ Configure the API URL for the browser:
 NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 ```
 
-The landing mockups reflect the same PatchFlow layout model:
+The landing mockups reflect the same GoForage layout model:
 - left: workflow steps/statuses
 - center: diff viewer
 - right: agent/log stream
@@ -149,7 +147,7 @@ The landing mockups reflect the same PatchFlow layout model:
 The backend is a FastAPI service that owns run lifecycle and exposes the API contracts the UI will consume.
 
 ### What works today
-- `POST /api/run` accepts `{ "task": "..." }` for the **local** repo (`GOFORGE_REPO_ROOT`), or `{ "task": "...", "repo_url": "https://..." }` to **clone or refresh** a public HTTPS repo into the cache and run there. Then the **PatchFlow pipeline** runs: **Planner** → **Context Retrieval** (**RAG** when configured) → **Code Generation** (unified diff + **`notes`**) → **Test Generation** (**`tests`** + **`coverage_focus`**) → **Validation** (`git apply` + `go build ./...` + `go test ./...`). **After initializing** a local git baseline in `sandbox-repo` on first use (local mode), each run **resets** to `HEAD` before applying, then **resets** again after the run so the next run starts clean.
+- `POST /api/run` accepts `{ "task": "..." }` for the **local** repo (`GOFORGE_REPO_ROOT`), or `{ "task": "...", "repo_url": "https://..." }` to **clone or refresh** a public HTTPS repo into the cache and run there. Then the **GoForage pipeline** runs: **Planner** → **Context Retrieval** (**RAG** when configured) → **Code Generation** (unified diff + **`notes`**) → **Test Generation** (**`tests`** + **`coverage_focus`**) → **Validation** (`git apply` + `go build ./...` + `go test ./...`). **After initializing** a local git baseline in `sandbox-repo` on first use (local mode), each run **resets** to `HEAD` before applying, then **resets** again after the run so the next run starts clean.
 - With an API key, **Validation** can **retry** up to `GOFORGE_VALIDATION_MAX_ATTEMPTS` times (default 3) on the same run, feeding the previous failure back into the code agent.
 - `GET /api/run/{id}` returns the latest snapshot (steps, logs, diff, **`code_notes`**, **`test_paths`**, **`coverage_focus`**, `pr_url`, errors).
 - `GET /api/run/{id}/stream` streams **SSE** snapshots as the pipeline advances.
@@ -183,7 +181,7 @@ cd backend
 From the repository root (after `backend/.venv` exists and `frontend/node_modules` are installed):
 
 ```bash
-bash scripts/verify-patchflow.sh
+bash scripts/verify-goforage.sh
 ```
 
 This runs unit tests, an in-process API smoke check (`backend/scripts/smoke_api.py`), `npm run build` in `frontend/`, and `docker compose config` when Docker is available.
@@ -279,7 +277,7 @@ npm run build
 
 ## Design and Quality Standards
 
-PatchFlow development follows these constraints:
+GoForage development follows these constraints:
 - clean, readable, maintainable code
 - clear naming and logical structure
 - explicit edge-case handling
