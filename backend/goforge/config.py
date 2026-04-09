@@ -17,5 +17,11 @@ class Settings(BaseSettings):
     repo_root: Path = _default_repo_root()
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
+    # Optional OpenAI-compatible API (Planner agent). If unset, planner uses mock output.
+    openai_api_key: str | None = None
+    openai_base_url: str = "https://api.openai.com/v1"
+    openai_model: str = "gpt-4o-mini"
+    planner_timeout_s: float = 120.0
+
 
 settings = Settings()

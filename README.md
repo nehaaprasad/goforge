@@ -118,6 +118,8 @@ The backend is a FastAPI service that owns run lifecycle and exposes the API con
 ### Configuration
 - `GOFORGE_REPO_ROOT`: absolute or relative path to the local Go repo (default: repository `sandbox-repo/` next to this README).
 
+**Optional LLM Planner** (OpenAI-compatible Chat Completions JSON): when `GOFORGE_OPENAI_API_KEY` is set, the **Planner** step calls the API; otherwise it uses a deterministic mock plan derived from the repo’s `.go` file list. If the API call fails, the pipeline falls back to the mock plan and records the error in **risks**. See `backend/.env.example` for `GOFORGE_OPENAI_BASE_URL`, `GOFORGE_OPENAI_MODEL`, and `GOFORGE_PLANNER_TIMEOUT_S`.
+
 ### Run locally
 ```bash
 cd backend

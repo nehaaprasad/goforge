@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 
+from goforge.agents.planner import run_planner
+from goforge.config import settings
 from goforge.repo.workspace import ensure_git_repo, git_apply_unified, git_reset_clean
 from goforge.run_store import RunRecord, store
 from goforge.schemas import StepStatus
@@ -22,6 +24,36 @@ def _set_step_status(rec: RunRecord, name: str, status: StepStatus) -> None:
 async def _append_log(rec: RunRecord, line: str) -> None:
     rec.logs.append(line)
     await store.emit(rec.run_id, rec.snapshot())
+
+
+async def _run_planner_step(rec: RunRecord) -> None:
+    _set_step_status(rec, "Planner", "running")
+    await store.emit(rec.run_id, rec.snapshot())
+    await _delay(0.12)
+
+    mode = (
+        "llm"
+        if settings.openai_api_key and str(settings.openai_api_key).strip()
+        else "mock"
+    )
+    await _append_log(rec, f"Planner: mode={mode}")
+
+    plan = await run_planner(rec.task, rec.repo_root)
+    for item in plan.tasks:
+        await _append_log(rec, f"Planner task: {item}")
+    if plan.files:
+        shown = plan.files[:14]
+        await _append_log(rec, "Planner files: " + ", ".join(shown))
+        if len(plan.files) > 14:
+            await _append_log(
+                rec, f"Planner: ({len(plan.files) - 14} additional path(s) omitted)"
+            )
+    for risk in plan.risks:
+        await _append_log(rec, f"Planner risk: {risk}")
+
+    _set_step_status(rec, "Planner", "done")
+    await store.emit(rec.run_id, rec.snapshot())
+    await _delay(0.05)
 
 
 async def _run_mock_step(
@@ -79,14 +111,9 @@ async def run_mock_pipeline(rec: RunRecord) -> None:
             "Workspace: git baseline ready (reset to HEAD before patch).",
         )
 
-        early_stages: list[tuple[str, list[str]]] = [
-            (
-                "Planner",
-                [
-                    "Planner: decomposing ticket into scoped steps.",
-                    "Planner: candidate files — internal/greet (mock).",
-                ],
-            ),
+        await _run_planner_step(rec)
+
+        later_stages: list[tuple[str, list[str]]] = [
             (
                 "Context Retrieval",
                 [
@@ -108,7 +135,7 @@ async def run_mock_pipeline(rec: RunRecord) -> None:
             ),
         ]
 
-        for step_name, lines in early_stages:
+        for step_name, lines in later_stages:
             await _run_mock_step(rec, step_name, lines)
 
         rec.diff = MOCK_DIFF

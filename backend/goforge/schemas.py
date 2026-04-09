@@ -41,6 +41,14 @@ class RunSnapshot(BaseModel):
     error: str | None = None
 
 
+class PlannerOutput(BaseModel):
+    """Strict planner contract (matches PatchFlow agent JSON shape)."""
+
+    tasks: list[str] = Field(default_factory=list)
+    files: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+
+
 class HealthResponse(BaseModel):
     ok: bool = True
     repo_root: str
