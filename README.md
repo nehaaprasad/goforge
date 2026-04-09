@@ -126,6 +126,12 @@ python3 -m venv .venv
 .venv/bin/uvicorn goforge.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+### Backend tests
+```bash
+cd backend
+.venv/bin/python -m unittest discover -s tests -v
+```
+
 ---
 
 ## Planned Backend Workflow
