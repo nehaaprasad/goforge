@@ -95,3 +95,56 @@ async def git_apply_unified(repo_root: str, diff_text: str) -> tuple[int, str]:
         return code, out
 
     return await _run(root, ["git", "apply", "-"], stdin=data)
+
+
+async def git_rev_parse_branch(repo_root: str) -> str:
+    root = Path(repo_root).resolve()
+    code, out = await _run(root, ["git", "rev-parse", "--abbrev-ref", "HEAD"])
+    if code != 0:
+        return "main"
+    b = out.strip()
+    return b if b else "main"
+
+
+async def git_resolve_default_branch(repo_root: str) -> str:
+    """Best-effort local default branch name (main vs master)."""
+    root = Path(repo_root).resolve()
+    code, out = await _run(
+        root, ["git", "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"]
+    )
+    if code == 0 and "refs/heads/" in out:
+        return out.strip().split("/")[-1]
+    for name in ("main", "master"):
+        c, _ = await _run(root, ["git", "rev-parse", "--verify", name])
+        if c == 0:
+            return name
+    return "main"
+
+
+async def git_checkout_new_branch(repo_root: str, branch: str) -> tuple[int, str]:
+    root = Path(repo_root).resolve()
+    return await _run(root, ["git", "checkout", "-b", branch])
+
+
+async def git_checkout(repo_root: str, branch: str) -> tuple[int, str]:
+    root = Path(repo_root).resolve()
+    return await _run(root, ["git", "checkout", branch])
+
+
+async def git_commit_all(repo_root: str, message: str) -> tuple[int, str]:
+    root = Path(repo_root).resolve()
+    code, out = await _run(root, ["git", "add", "-A"])
+    if code != 0:
+        return code, out
+    return await _run(root, ["git", *_GIT_IDENTITY, "commit", "-m", message])
+
+
+async def git_branch_delete(repo_root: str, branch: str, *, force: bool = False) -> tuple[int, str]:
+    root = Path(repo_root).resolve()
+    flag = "-D" if force else "-d"
+    return await _run(root, ["git", "branch", flag, branch])
+
+
+async def git_push_url(repo_root: str, remote_url: str, refspec: str) -> tuple[int, str]:
+    root = Path(repo_root).resolve()
+    return await _run(root, ["git", "push", remote_url, refspec])

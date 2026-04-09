@@ -57,3 +57,10 @@ class HealthResponse(BaseModel):
     git_available: bool = False
     go_version_line: str | None = None
     git_version_line: str | None = None
+
+
+class PRDetailsResponse(BaseModel):
+    run_id: str
+    status: RunStatus
+    pr_url: str | None = None
+    error: str | None = None

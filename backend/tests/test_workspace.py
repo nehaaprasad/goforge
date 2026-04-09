@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from goforge.mock_pipeline import MOCK_DIFF
+from goforge.default_diff import MOCK_DIFF
 from goforge.repo.workspace import ensure_git_repo, git_apply_unified, git_reset_clean
 from goforge.validation.go_checks import run_go_test
 

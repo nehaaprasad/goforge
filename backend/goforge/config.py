@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,6 +23,16 @@ class Settings(BaseSettings):
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-4o-mini"
     planner_timeout_s: float = 120.0
+    codegen_timeout_s: float = 180.0
+
+    # Validation: apply + go test retries when LLM is enabled (mock path uses 1 attempt).
+    validation_max_attempts: int = Field(default=3, ge=1, le=20)
+
+    # Optional GitHub PR (fine-grained or classic PAT with repo scope). If unset, PR step logs skip.
+    github_token: str | None = None
+    github_repo: str | None = None  # "owner/name" for API + push URL
+    # Empty = detect from local repo (main vs master). Set explicitly if needed.
+    github_default_branch: str = ""
 
 
 settings = Settings()

@@ -4,14 +4,20 @@ import asyncio
 import json
 from collections.abc import AsyncIterator
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from goforge.config import settings
 from goforge.mock_pipeline import run_mock_pipeline
 from goforge.run_store import store
-from goforge.schemas import HealthResponse, RunCreateRequest, RunCreateResponse, RunSnapshot
+from goforge.schemas import (
+    HealthResponse,
+    PRDetailsResponse,
+    RunCreateRequest,
+    RunCreateResponse,
+    RunSnapshot,
+)
 from goforge.toolchain import get_go_git_versions
 
 app = FastAPI(
@@ -116,10 +122,14 @@ def _sse_encode(snapshot: RunSnapshot) -> bytes:
     return f"data: {payload}\n\n".encode("utf-8")
 
 
-@app.get("/api/pr/{run_id}")
-async def pr_details(run_id: str):
-    _ = run_id
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="PR details endpoint not implemented yet (GitHub integration pending).",
+@app.get("/api/pr/{run_id}", response_model=PRDetailsResponse)
+async def pr_details(run_id: str) -> PRDetailsResponse:
+    rec = await store.get(run_id)
+    if rec is None:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    return PRDetailsResponse(
+        run_id=rec.run_id,
+        status=rec.status,
+        pr_url=rec.pr_url,
+        error=rec.error,
     )
