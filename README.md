@@ -71,20 +71,32 @@ goforge/
 
 ## Frontend (Implemented)
 
-The frontend is implemented as a premium dark-first product landing page with:
+The frontend includes:
 
-1. Header (logo, nav, CTAs)
-2. Hero section (headline, subheadline, CTAs, product mockup)
-3. Trust strip
-4. How-it-works section
-5. Feature grid
-6. Demo preview section
-7. Architecture flow section
-8. FAQ
-9. Final CTA
-10. Footer
+1. **Marketing site** (`/`) — premium dark-first landing page with:
+   - Header (logo, nav, CTAs)
+   - Hero section (headline, subheadline, CTAs, product mockup)
+   - Trust strip
+   - How-it-works section
+   - Feature grid
+   - Demo preview section
+   - Architecture flow section
+   - FAQ
+   - Final CTA
+   - Footer
 
-The mockups reflect the intended PatchFlow app model:
+2. **Live workflow** (`/workflow`) — connects to the FastAPI backend:
+   - task input + Run → `POST /api/run`
+   - live steps, logs, and unified diff via `GET /api/run/{id}` and SSE `…/stream`
+
+Configure the API URL for the browser:
+
+```bash
+# frontend/.env.local (optional; defaults to http://127.0.0.1:8000)
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
+
+The landing mockups reflect the same PatchFlow layout model:
 - left: workflow steps/statuses
 - center: diff viewer
 - right: agent/log stream
@@ -181,6 +193,7 @@ npm run build
 - FastAPI backend skeleton
 - run lifecycle + in-memory store
 - mock pipeline + SSE stream
+- frontend `/workflow` page wired to the API (dev)
 
 ### Phase C
 - planner -> code -> test pipeline integration
