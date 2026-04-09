@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
+from goforge.repo.workspace import ensure_git_repo, git_apply_unified, git_reset_clean
 from goforge.run_store import RunRecord, store
 from goforge.schemas import StepStatus
 from goforge.validation.go_checks import run_go_test
@@ -39,26 +40,44 @@ async def _run_mock_step(
     await _delay(0.05)
 
 
+# Must apply cleanly to the committed baseline in sandbox-repo (see internal/greet).
 MOCK_DIFF = (
     "--- a/internal/greet/greet.go\n"
     "+++ b/internal/greet/greet.go\n"
-    "@@ -1,6 +1,7 @@\n"
-    " package greet\n"
+    "@@ -3,5 +3,6 @@\n"
     " \n"
     " // Hello returns a fixed string for tests and demos.\n"
     " func Hello() string {\n"
-    "+\t// PatchFlow: mock diff — replace with agent output.\n"
-    "\treturn \"hello\"\n"
+    "+\t// PatchFlow: applied mock diff (sandbox).\n"
+    " \treturn \"hello\"\n"
     " }\n"
 )
 
 
 async def run_mock_pipeline(rec: RunRecord) -> None:
     try:
+        ok, err = await ensure_git_repo(rec.repo_root)
+        if not ok:
+            rec.status = "failed"
+            rec.error = err
+            await store.emit(rec.run_id, rec.snapshot())
+            return
+
+        code, rout = await git_reset_clean(rec.repo_root)
+        if code != 0:
+            rec.status = "failed"
+            rec.error = f"git reset failed:\n{rout}"
+            await store.emit(rec.run_id, rec.snapshot())
+            return
+
         rec.status = "running"
         await store.emit(rec.run_id, rec.snapshot())
 
         await _append_log(rec, "Run started against local sandbox repository.")
+        await _append_log(
+            rec,
+            "Workspace: git baseline ready (reset to HEAD before patch).",
+        )
 
         early_stages: list[tuple[str, list[str]]] = [
             (
@@ -95,42 +114,67 @@ async def run_mock_pipeline(rec: RunRecord) -> None:
         rec.diff = MOCK_DIFF
         await store.emit(rec.run_id, rec.snapshot())
 
-        _set_step_status(rec, "Validation", "running")
-        await store.emit(rec.run_id, rec.snapshot())
-        await _append_log(rec, "Validation: running go test ./...")
-
-        code, output = await run_go_test(rec.repo_root)
-        for line in (output.splitlines() if output.strip() else ["(no output)"]):
-            await _append_log(rec, line)
-
-        if code != 0:
-            _set_step_status(rec, "Validation", "failed")
-            rec.status = "failed"
-            rec.error = f"go test ./... exited with code {code}"
-            rec.pr_url = None
+        try:
+            _set_step_status(rec, "Validation", "running")
             await store.emit(rec.run_id, rec.snapshot())
-            return
 
-        _set_step_status(rec, "Validation", "done")
-        await store.emit(rec.run_id, rec.snapshot())
+            await _append_log(rec, "Validation: applying unified diff (git apply)")
 
-        _set_step_status(rec, "PR Creation", "running")
-        await store.emit(rec.run_id, rec.snapshot())
-        await _delay(0.12)
-        await _append_log(
-            rec,
-            "PR: skipped — GitHub integration not enabled (validation passed).",
-        )
-        await _delay(0.05)
-        _set_step_status(rec, "PR Creation", "done")
+            acode, aout = await git_apply_unified(rec.repo_root, MOCK_DIFF)
+            for line in aout.splitlines() if aout.strip() else ["(git apply: no output)"]:
+                await _append_log(rec, line)
 
-        rec.status = "completed"
-        rec.pr_url = None
-        await _append_log(
-            rec,
-            "Pipeline completed: go test passed; PR automation is the next integration step.",
-        )
-        await store.emit(rec.run_id, rec.snapshot())
+            if acode != 0:
+                _set_step_status(rec, "Validation", "failed")
+                rec.status = "failed"
+                rec.error = f"git apply failed with exit code {acode}"
+                rec.pr_url = None
+                await store.emit(rec.run_id, rec.snapshot())
+                return
+
+            await _append_log(rec, "Validation: running go test ./...")
+
+            tcode, output = await run_go_test(rec.repo_root)
+            for line in output.splitlines() if output.strip() else ["(no output)"]:
+                await _append_log(rec, line)
+
+            if tcode != 0:
+                _set_step_status(rec, "Validation", "failed")
+                rec.status = "failed"
+                rec.error = f"go test ./... exited with code {tcode}"
+                rec.pr_url = None
+                await store.emit(rec.run_id, rec.snapshot())
+                return
+
+            _set_step_status(rec, "Validation", "done")
+            await store.emit(rec.run_id, rec.snapshot())
+
+            _set_step_status(rec, "PR Creation", "running")
+            await store.emit(rec.run_id, rec.snapshot())
+            await _delay(0.12)
+            await _append_log(
+                rec,
+                "PR: skipped — GitHub integration not enabled (validation passed).",
+            )
+            await _delay(0.05)
+            _set_step_status(rec, "PR Creation", "done")
+
+            rec.status = "completed"
+            rec.pr_url = None
+            await _append_log(
+                rec,
+                "Pipeline completed: patch applied, go test passed; PR automation is next.",
+            )
+            await store.emit(rec.run_id, rec.snapshot())
+
+        finally:
+            rcode, _ = await git_reset_clean(rec.repo_root)
+            if rcode != 0:
+                await _append_log(
+                    rec,
+                    f"Warning: post-run git reset returned {rcode} (sandbox may need manual cleanup).",
+                )
+                await store.emit(rec.run_id, rec.snapshot())
 
     except asyncio.CancelledError:
         rec.status = "failed"
