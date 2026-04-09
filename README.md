@@ -20,6 +20,45 @@ PatchFlow (within GoForge) acts as a developer cockpit for ticket-to-PR automati
 
 It is intentionally built with strict stage boundaries and machine-readable contracts to avoid hidden behavior and reduce risk.
 
+### Architecture diagram
+
+High-level flow: you describe the change in the browser; the API creates a run, walks the pipeline in order, validates with **git** and **Go** on real files, and optionally persists run snapshots to SQLite. The editable Mermaid source also lives in `docs/patchflow-system-diagram.mmd`.
+
+```mermaid
+flowchart TB
+  subgraph user [You]
+    T[Describe the change in plain English]
+  end
+  subgraph ui [Browser]
+    W[Workflow page: Run, steps, diff, logs]
+  end
+  subgraph api [Backend API]
+    R[Create run + pick repo]
+    P[Pipeline in order]
+    R --> P
+  end
+  subgraph pipeline [What runs inside the pipeline]
+    P1[Planner: plan + files + risks]
+    P2[Context: RAG + file bundle]
+    P3[Code: unified diff + notes]
+    P4[Tests: paths + coverage ideas]
+    P5[Validation: git apply + go build + go test]
+    P6[Optional: open PR on GitHub]
+    P1 --> P2 --> P3 --> P4 --> P5 --> P6
+  end
+  subgraph truth [Reality checks]
+    G[Git + Go on real files]
+  end
+  subgraph store [Remembering runs]
+    S[(SQLite snapshots optional)]
+  end
+  T --> W
+  W -->|HTTP + live stream| R
+  P --> pipeline
+  P5 --> G
+  R --> S
+```
+
 ---
 
 ## Current Scope (Vertical Slice)
