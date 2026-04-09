@@ -111,7 +111,7 @@ The backend is a FastAPI service that owns run lifecycle and exposes the API con
 - `POST /api/run` creates a run against the local repo path and runs a **hybrid** pipeline: early stages are **mock** (Planner → Test Generation), then **Validation** applies the proposed **unified diff** with **`git apply`** (after initializing a local git baseline in `sandbox-repo` on first use), runs **`go test ./...`**, then **resets** the worktree to `HEAD` so the next run starts clean.
 - `GET /api/run/{id}` returns the latest snapshot (steps, logs, mock diff, errors).
 - `GET /api/run/{id}/stream` streams **SSE** snapshots as the pipeline advances.
-- `GET /health` reports whether `./sandbox-repo` exists on disk.
+- `GET /health` reports whether `./sandbox-repo` exists on disk and whether **`go`** and **`git`** are on `PATH` (with version lines).
 - `GET /api/pr/{id}` returns **501** until GitHub integration exists.
 - If **`go test ./...` fails**, the run ends in **`failed`** with Validation marked **`failed`** and logs containing the `go test` output.
 
