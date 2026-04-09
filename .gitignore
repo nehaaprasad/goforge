@@ -1,6 +1,9 @@
 # Sandbox: local git worktree created by the API on first run
 sandbox-repo/.git/
 
+# SQLite run store (production / local)
+backend/data/
+
 # Python (backend)
 backend/.venv/
 **/__pycache__/

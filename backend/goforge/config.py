@@ -8,6 +8,10 @@ def _default_repo_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent / "sandbox-repo"
 
 
+def _default_db_path() -> Path:
+    return Path(__file__).resolve().parent.parent / "data" / "goforge.db"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="GOFORGE_",
@@ -17,6 +21,10 @@ class Settings(BaseSettings):
 
     repo_root: Path = _default_repo_root()
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    # Persist run snapshots to SQLite (survives process restarts; GET /api/run/{id} works after restart).
+    persistence_enabled: bool = True
+    db_path: Path = Field(default_factory=_default_db_path)
 
     # Optional OpenAI-compatible API (Planner agent). If unset, planner uses mock output.
     openai_api_key: str | None = None

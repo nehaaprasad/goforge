@@ -75,6 +75,10 @@ class HealthResponse(BaseModel):
     git_available: bool = False
     go_version_line: str | None = None
     git_version_line: str | None = None
+    persistence_enabled: bool = True
+    persistence: Literal["sqlite", "memory"] = "sqlite"
+    database_path: str | None = None
+    openai_key_configured: bool = False
 
 
 class PRDetailsResponse(BaseModel):

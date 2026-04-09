@@ -137,6 +137,12 @@ cd backend
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
+### Production notes
+- **Run persistence**: snapshots are written to **SQLite** at `GOFORGE_DB_PATH` (default `backend/data/goforge.db`). After a restart, **`GET /api/run/{id}`** still returns completed/failed runs. In-flight runs (`queued` / `running`) are marked **failed** with *Run interrupted by server restart.*
+- **Disable persistence** (e.g. tests): `GOFORGE_PERSISTENCE_ENABLED=false`.
+- **Health**: `GET /health` includes `persistence`, `database_path`, and `openai_key_configured`.
+- **Docker**: from the repo root, `docker compose up --build` runs the API with `./sandbox-repo` mounted and a volume for `/data` (see `docker-compose.yml`). Install **Go** inside the image so `go build` / `go test` validation works without relying on the host.
+
 ---
 
 ## Planned Backend Workflow

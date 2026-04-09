@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +12,7 @@ from fastapi.responses import StreamingResponse
 
 from goforge.config import settings
 from goforge.mock_pipeline import run_mock_pipeline
+from goforge.persistence.sqlite_runs import init_db, mark_stale_runs_failed
 from goforge.run_store import store
 from goforge.schemas import (
     HealthResponse,
@@ -20,10 +23,30 @@ from goforge.schemas import (
 )
 from goforge.toolchain import get_go_git_versions
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("goforge")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    if settings.persistence_enabled:
+        await init_db(settings.db_path)
+        n = await mark_stale_runs_failed(settings.db_path)
+        if n:
+            logger.info("Recovered from interrupted runs: marked %d as failed.", n)
+    yield
+    await store.cancel_all_pipeline_tasks()
+    logger.info("Shutdown: cancelled in-flight pipeline tasks.")
+
+
 app = FastAPI(
     title="goforge API",
     description="PatchFlow orchestration backend (vertical slice).",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 _origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
@@ -40,6 +63,7 @@ app.add_middleware(
 async def health() -> HealthResponse:
     root = settings.repo_root.resolve()
     go_v, git_v = await get_go_git_versions()
+    openai_ok = bool(settings.openai_api_key and str(settings.openai_api_key).strip())
     return HealthResponse(
         repo_root=str(root),
         repo_exists=root.is_dir(),
@@ -47,6 +71,10 @@ async def health() -> HealthResponse:
         git_available=git_v is not None,
         go_version_line=go_v,
         git_version_line=git_v,
+        persistence_enabled=settings.persistence_enabled,
+        persistence="sqlite" if settings.persistence_enabled else "memory",
+        database_path=str(settings.db_path) if settings.persistence_enabled else None,
+        openai_key_configured=openai_ok,
     )
 
 
