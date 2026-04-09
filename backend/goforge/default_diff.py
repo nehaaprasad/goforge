@@ -10,7 +10,7 @@ MOCK_DIFF = (
     " \n"
     " // Hello returns a fixed string for tests and demos.\n"
     " func Hello() string {\n"
-    "+\t// PatchFlow: applied mock diff (sandbox).\n"
+    "+\t// GoForage: applied mock diff (sandbox).\n"
     " \treturn \"hello\"\n"
     " }\n"
 )

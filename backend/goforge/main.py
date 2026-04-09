@@ -45,7 +45,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="goforge API",
-    description="PatchFlow orchestration backend (vertical slice).",
+    description="GoForage orchestration backend (vertical slice).",
     version="0.1.0",
     lifespan=lifespan,
 )

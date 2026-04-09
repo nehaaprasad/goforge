@@ -48,7 +48,7 @@ class RunSnapshot(BaseModel):
 
 
 class PlannerOutput(BaseModel):
-    """Strict planner contract (matches PatchFlow agent JSON shape)."""
+    """Strict planner contract (matches GoForage agent JSON shape)."""
 
     tasks: list[str] = Field(default_factory=list)
     files: list[str] = Field(default_factory=list)

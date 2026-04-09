@@ -1,3 +1,3 @@
-"""goforge backend — PatchFlow orchestration API."""
+"""goforge backend — GoForage orchestration API."""
 
 __version__ = "0.1.0"

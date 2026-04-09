@@ -1,4 +1,4 @@
-"""Clone or refresh a remote Git repository for PatchFlow runs (HTTPS, allowlisted hosts)."""
+"""Clone or refresh a remote Git repository for GoForage runs (HTTPS, allowlisted hosts)."""
 
 from __future__ import annotations
 

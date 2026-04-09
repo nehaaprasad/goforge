@@ -113,9 +113,9 @@ async def try_create_github_pr(
             return None, [f"PR: git push failed:\n{out}"]
         logs.append("PR: pushed branch to GitHub.")
 
-        title = f"PatchFlow: {task[:100]}"
+        title = f"GoForage: {task[:100]}"
         body = (
-            f"Automated by **GoForge PatchFlow**.\n\n"
+            f"Automated by **GoForge** (GoForage).\n\n"
             f"- Run ID: `{run_id}`\n"
         )
         try:

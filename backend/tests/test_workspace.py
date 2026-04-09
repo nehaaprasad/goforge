@@ -69,7 +69,7 @@ class TestWorkspace(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(rcode, 0)
 
             text = (root / "internal" / "greet" / "greet.go").read_text(encoding="utf-8")
-            self.assertNotIn("PatchFlow: applied mock diff", text)
+            self.assertNotIn("GoForage: applied mock diff", text)
 
     async def test_git_apply_rejects_bad_patch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
