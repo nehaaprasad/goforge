@@ -56,7 +56,7 @@ export function SiteHeader() {
 
         <div className="flex shrink-0 items-center gap-2">
           <Link
-            href="#demo"
+            href="/workflow"
             className={cn(
               buttonVariants({ variant: "outline", size: "sm" }),
               "hidden border-white/10 bg-white/[0.03] text-zinc-200 hover:bg-white/[0.06] sm:inline-flex"
@@ -65,7 +65,7 @@ export function SiteHeader() {
             View Workflow
           </Link>
           <Link
-            href="#demo"
+            href="/workflow"
             className={cn(
               buttonVariants({ size: "sm" }),
               "h-8 bg-gradient-to-r from-indigo-500 to-violet-600 px-3 text-xs font-medium text-white shadow-lg shadow-indigo-500/20 hover:from-indigo-400 hover:to-violet-500"
