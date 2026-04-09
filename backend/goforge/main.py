@@ -12,6 +12,7 @@ from goforge.config import settings
 from goforge.mock_pipeline import run_mock_pipeline
 from goforge.run_store import store
 from goforge.schemas import HealthResponse, RunCreateRequest, RunCreateResponse, RunSnapshot
+from goforge.toolchain import get_go_git_versions
 
 app = FastAPI(
     title="goforge API",
@@ -32,7 +33,15 @@ app.add_middleware(
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     root = settings.repo_root.resolve()
-    return HealthResponse(repo_root=str(root), repo_exists=root.is_dir())
+    go_v, git_v = await get_go_git_versions()
+    return HealthResponse(
+        repo_root=str(root),
+        repo_exists=root.is_dir(),
+        go_available=go_v is not None,
+        git_available=git_v is not None,
+        go_version_line=go_v,
+        git_version_line=git_v,
+    )
 
 
 @app.post("/api/run", response_model=RunCreateResponse)
