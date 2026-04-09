@@ -5,11 +5,11 @@ import re
 from typing import Any
 
 import httpx
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import ValidationError
 
 from goforge.config import settings
 from goforge.default_diff import MOCK_DIFF
-from goforge.schemas import PlannerOutput
+from goforge.schemas import CodeAgentOutput, PlannerOutput
 
 _SYSTEM = (
     "You are an expert Go engineer. Produce a single unified diff (git format) "
@@ -18,12 +18,9 @@ _SYSTEM = (
     "Prefer minimal changes. If tests need updates, include *_test.go hunks in the same diff. "
     "The change must compile: `go build ./...` and tests must pass: `go test ./...`. "
     "Avoid hallucinated imports or missing symbols. "
-    "Return JSON only with key unified_diff (string). The diff must be valid unified diff text."
+    "Return JSON only with keys: unified_diff (string, required), notes (array of short strings "
+    "for reviewers—what changed and why). The diff must be valid unified diff text."
 )
-
-
-class _CodegenOutput(BaseModel):
-    unified_diff: str = Field(min_length=1)
 
 
 def _strip_json_fences(raw: str) -> str:
@@ -34,22 +31,27 @@ def _strip_json_fences(raw: str) -> str:
     return s
 
 
-def _parse_codegen_json(raw: str) -> str:
+def _parse_codegen_json(raw: str) -> CodeAgentOutput:
     s = _strip_json_fences(raw)
     try:
         data: Any = json.loads(s)
     except json.JSONDecodeError as exc:
         raise ValueError(f"codegen returned non-JSON: {exc}") from exc
     try:
-        out = _CodegenOutput.model_validate(data)
+        return CodeAgentOutput.model_validate(data)
     except ValidationError as exc:
         raise ValueError(f"codegen JSON invalid: {exc}") from exc
-    return out.unified_diff.strip()
 
 
-def _mock_codegen(task: str, repo_root: str, plan: PlannerOutput) -> str:
+def _mock_codegen(task: str, repo_root: str, plan: PlannerOutput) -> CodeAgentOutput:
     _ = (task, repo_root, plan)
-    return MOCK_DIFF
+    return CodeAgentOutput(
+        unified_diff=MOCK_DIFF,
+        notes=[
+            "Mock mode: fixed sandbox diff (set GOFORGE_OPENAI_API_KEY for LLM codegen).",
+            "Change is limited to a comment line in internal/greet; tests unchanged.",
+        ],
+    )
 
 
 async def _llm_codegen(
@@ -58,7 +60,7 @@ async def _llm_codegen(
     plan: PlannerOutput,
     context_bundle: str,
     previous_failure: str | None,
-) -> str:
+) -> CodeAgentOutput:
     key = settings.openai_api_key
     if not key or not str(key).strip():
         return _mock_codegen(task, repo_root, plan)
@@ -126,25 +128,23 @@ async def generate_unified_diff(
     context_bundle: str,
     *,
     previous_failure: str | None = None,
-) -> tuple[str, str | None]:
+) -> tuple[str, list[str], str | None]:
     """
-    Produce a unified diff. Uses OpenAI-compatible Chat Completions when
+    Produce a unified diff and reviewer notes. Uses OpenAI-compatible Chat Completions when
     GOFORGE_OPENAI_API_KEY is set; otherwise returns the sandbox mock diff.
-
-    Returns (diff, warning). Warning is set when an LLM was requested but
-    generation failed and the sandbox mock diff was used instead.
+    Returns (diff, code_notes, warning).
     """
     if not settings.openai_api_key or not str(settings.openai_api_key).strip():
-        return _mock_codegen(task, repo_root, plan), None
+        out = _mock_codegen(task, repo_root, plan)
+        return out.unified_diff, list(out.notes), None
 
     try:
-        return (
-            await _llm_codegen(
-                task, repo_root, plan, context_bundle, previous_failure
-            ),
-            None,
+        out = await _llm_codegen(
+            task, repo_root, plan, context_bundle, previous_failure
         )
+        return out.unified_diff, list(out.notes), None
     except Exception as exc:
-        return _mock_codegen(task, repo_root, plan), (
+        out = _mock_codegen(task, repo_root, plan)
+        return out.unified_diff, list(out.notes), (
             f"LLM codegen failed; using sandbox mock diff: {exc}"
         )

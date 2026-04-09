@@ -30,6 +30,9 @@ class RunRecord:
     diff: str | None = None
     pr_url: str | None = None
     error: str | None = None
+    code_notes: list[str] = field(default_factory=list)
+    test_paths: list[str] = field(default_factory=list)
+    coverage_focus: list[str] = field(default_factory=list)
     event_queue: asyncio.Queue[RunSnapshot] = field(default_factory=asyncio.Queue)
     pipeline_task: asyncio.Task[None] | None = None
 
@@ -44,6 +47,9 @@ class RunRecord:
             diff=self.diff,
             pr_url=self.pr_url,
             error=self.error,
+            code_notes=list(self.code_notes),
+            test_paths=list(self.test_paths),
+            coverage_focus=list(self.coverage_focus),
         )
 
 

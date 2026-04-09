@@ -26,6 +26,12 @@ export type RunSnapshot = {
   diff: string | null;
   pr_url: string | null;
   error: string | null;
+  /** Code agent reviewer notes (PDF contract). */
+  code_notes: string[];
+  /** Test agent: suggested *_test.go paths. */
+  test_paths: string[];
+  /** Test agent: scenarios to cover. */
+  coverage_focus: string[];
 };
 
 export type RunCreateResponse = {

@@ -4,6 +4,7 @@ import asyncio
 
 from goforge.agents.codegen import generate_unified_diff
 from goforge.agents.planner import run_planner
+from goforge.agents.test_agent import run_test_agent
 from goforge.config import settings
 from goforge.context.bundle import build_context_bundle
 from goforge.github.pr import try_create_github_pr
@@ -92,7 +93,7 @@ async def _run_codegen_step(
             "Code agent: regenerating unified diff (validation feedback).",
         )
 
-    diff, warn = await generate_unified_diff(
+    diff, code_notes, warn = await generate_unified_diff(
         rec.task,
         rec.repo_root,
         plan,
@@ -102,29 +103,46 @@ async def _run_codegen_step(
     if warn:
         await _append_log(rec, warn)
 
+    rec.code_notes = list(code_notes)
     rec.diff = diff
     await store.emit(rec.run_id, rec.snapshot())
     await _append_log(rec, "Code agent: unified diff ready.")
+    for note in code_notes:
+        await _append_log(rec, f"Code note: {note}")
     _set_step_status(rec, "Code Generation", "done")
     await store.emit(rec.run_id, rec.snapshot())
     await _delay(0.05)
     return diff, warn
 
 
-async def _run_testgen_step(rec: RunRecord, diff: str) -> None:
+async def _run_testgen_step(rec: RunRecord, plan: PlannerOutput, diff: str) -> None:
     _set_step_status(rec, "Test Generation", "running")
     await store.emit(rec.run_id, rec.snapshot())
     await _delay(0.1)
 
-    if "_test.go" in diff or "Test" in diff:
-        await _append_log(
-            rec,
-            "Test agent: patch includes test-related hunks (review).",
-        )
+    out, warn = await run_test_agent(rec.task, plan, diff)
+    if warn:
+        await _append_log(rec, warn)
+
+    rec.test_paths = list(out.tests)
+    rec.coverage_focus = list(out.coverage_focus)
+    await store.emit(rec.run_id, rec.snapshot())
+
+    if out.tests:
+        for p in out.tests:
+            await _append_log(rec, f"Test agent: suggested file — {p}")
     else:
         await _append_log(
             rec,
-            "Test agent: no obvious *_test.go hunks — relying on existing tests.",
+            "Test agent: no test file paths suggested (relying on existing tests).",
+        )
+    for c in out.coverage_focus:
+        await _append_log(rec, f"Test agent: coverage — {c}")
+
+    if "_test.go" in diff or "Test" in diff:
+        await _append_log(
+            rec,
+            "Test agent: diff includes test-related hunks (review).",
         )
 
     _set_step_status(rec, "Test Generation", "done")
@@ -163,7 +181,7 @@ async def run_mock_pipeline(rec: RunRecord) -> None:
         diff, _warn = await _run_codegen_step(
             rec, plan, context_bundle, previous_failure=None
         )
-        await _run_testgen_step(rec, diff)
+        await _run_testgen_step(rec, plan, diff)
 
         max_attempts = (
             settings.validation_max_attempts
@@ -183,10 +201,7 @@ async def run_mock_pipeline(rec: RunRecord) -> None:
                 diff, _warn = await _run_codegen_step(
                     rec, plan, context_bundle, previous_failure=failure
                 )
-                await _append_log(
-                    rec,
-                    "Test agent: re-checking unified diff after regeneration.",
-                )
+                await _run_testgen_step(rec, plan, diff)
 
             rec.diff = diff
             await store.emit(rec.run_id, rec.snapshot())

@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ChevronRight,
   GitPullRequest,
+  ListChecks,
   Loader2,
   Play,
   Terminal,
@@ -130,6 +131,14 @@ export function LiveWorkbench() {
   const val = validationCaption(snapshot?.steps, snapshot?.status);
 
   const activeChunk = diffChunks[fileIdx] ?? diffChunks[0];
+
+  const codeNotes = snapshot?.code_notes ?? [];
+  const testPaths = snapshot?.test_paths ?? [];
+  const coverageFocus = snapshot?.coverage_focus ?? [];
+  const hasStructuredOutput =
+    codeNotes.length > 0 ||
+    testPaths.length > 0 ||
+    coverageFocus.length > 0;
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 pb-16 pt-6 sm:px-6">
@@ -360,6 +369,60 @@ export function LiveWorkbench() {
                 <p className="text-[0.65rem] text-zinc-600">Waiting for output…</p>
               ) : null}
             </div>
+
+            {snapshot ? (
+              <div className="max-h-48 shrink-0 overflow-y-auto border-t border-white/[0.06] px-3 py-3">
+                <p className="mb-2 flex items-center gap-1.5 text-[0.65rem] font-medium uppercase tracking-wider text-zinc-500">
+                  <ListChecks className="size-3" aria-hidden />
+                  Agent outputs
+                </p>
+                {hasStructuredOutput ? (
+                  <div className="space-y-3 text-[0.65rem] leading-relaxed">
+                    {codeNotes.length > 0 ? (
+                      <div>
+                        <p className="mb-1 font-medium text-zinc-400">
+                          Code notes
+                        </p>
+                        <ul className="list-disc space-y-1 pl-4 text-zinc-400">
+                          {codeNotes.map((n, i) => (
+                            <li key={`code-note-${i}`}>{n}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {testPaths.length > 0 ? (
+                      <div>
+                        <p className="mb-1 font-medium text-zinc-400">
+                          Test files
+                        </p>
+                        <ul className="list-disc space-y-1 pl-4 font-mono text-[0.6rem] text-zinc-400">
+                          {testPaths.map((p, i) => (
+                            <li key={`tp-${i}`}>{p}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {coverageFocus.length > 0 ? (
+                      <div>
+                        <p className="mb-1 font-medium text-zinc-400">
+                          Coverage focus
+                        </p>
+                        <ul className="list-disc space-y-1 pl-4 text-zinc-400">
+                          {coverageFocus.map((c, i) => (
+                            <li key={`cf-${i}`}>{c}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="text-[0.65rem] text-zinc-600">
+                    Structured fields from the Code and Test agents appear here
+                    (same JSON contract as the PDF spec).
+                  </p>
+                )}
+              </div>
+            ) : null}
 
             <div className="shrink-0 border-t border-white/[0.06] px-3 py-3">
               <p className="mb-2 text-[0.65rem] font-medium uppercase tracking-wider text-zinc-500">

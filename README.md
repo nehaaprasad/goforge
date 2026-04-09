@@ -108,9 +108,9 @@ The landing mockups reflect the same PatchFlow layout model:
 The backend is a FastAPI service that owns run lifecycle and exposes the API contracts the UI will consume.
 
 ### What works today
-- `POST /api/run` creates a run against the local repo path and runs the **PatchFlow pipeline**: **Planner** → **Context Retrieval** (reads planner-selected `.go` files into a bounded bundle) → **Code Generation** (unified diff via **mock** when no API key, or **OpenAI-compatible** JSON when `GOFORGE_OPENAI_API_KEY` is set) → **Test Generation** (heuristic log on test hunks) → **Validation** (`git apply` + `go build ./...` + `go test ./...`). **After initializing** a local git baseline in `sandbox-repo` on first use, each run **resets** to `HEAD` before applying, then **resets** again after the run so the next run starts clean.
+- `POST /api/run` creates a run against the local repo path and runs the **PatchFlow pipeline**: **Planner** → **Context Retrieval** (reads planner-selected `.go` files into a bounded bundle) → **Code Generation** (unified diff + **`notes`**, mock or LLM JSON) → **Test Generation** (structured **`tests`** paths + **`coverage_focus`**, mock or LLM JSON) → **Validation** (`git apply` + `go build ./...` + `go test ./...`). **After initializing** a local git baseline in `sandbox-repo` on first use, each run **resets** to `HEAD` before applying, then **resets** again after the run so the next run starts clean.
 - With an API key, **Validation** can **retry** up to `GOFORGE_VALIDATION_MAX_ATTEMPTS` times (default 3) on the same run, feeding the previous failure back into the code agent.
-- `GET /api/run/{id}` returns the latest snapshot (steps, logs, diff, `pr_url`, errors).
+- `GET /api/run/{id}` returns the latest snapshot (steps, logs, diff, **`code_notes`**, **`test_paths`**, **`coverage_focus`**, `pr_url`, errors).
 - `GET /api/run/{id}/stream` streams **SSE** snapshots as the pipeline advances.
 - `GET /health` reports whether `./sandbox-repo` exists on disk and whether **`go`** and **`git`** are on `PATH` (with version lines).
 - `GET /api/pr/{id}` returns **run status**, **`pr_url`** (if a PR was opened), and **`error`** (if any). PR creation is **optional** (see GitHub below).
@@ -119,7 +119,7 @@ The backend is a FastAPI service that owns run lifecycle and exposes the API con
 ### Configuration
 - `GOFORGE_REPO_ROOT`: absolute or relative path to the local Go repo (default: repository `sandbox-repo/` next to this README).
 
-**Optional LLM** (OpenAI-compatible Chat Completions JSON): when `GOFORGE_OPENAI_API_KEY` is set, **Planner** and **Code Generation** call the API; otherwise the planner uses a deterministic mock plan and codegen uses a fixed sandbox **mock diff** (see `backend/goforge/default_diff.py`). Planner failures fall back to mock output with a **risk** line; codegen failures fall back to the mock diff with a log line. See `backend/.env.example` for timeouts and models.
+**Optional LLM** (OpenAI-compatible Chat Completions JSON): when `GOFORGE_OPENAI_API_KEY` is set, **Planner**, **Code Generation**, and **Test Generation** call the API; otherwise the planner uses a deterministic mock plan, codegen uses a fixed sandbox **mock diff** (see `backend/goforge/default_diff.py`), and the test agent uses heuristics from the diff. Planner failures fall back to mock output with a **risk** line; codegen/test failures fall back to mock output with a log line. See `backend/.env.example` for timeouts and models.
 
 **Optional GitHub PR** (after `go build` and `go test` pass): set `GOFORGE_GITHUB_TOKEN` (repo scope) and `GOFORGE_GITHUB_REPO` as `owner/name`. The backend creates a branch, commits, pushes to `https://github.com/owner/name`, and opens a PR via the GitHub API. Leave unset to skip (logs will say so). Set `GOFORGE_GITHUB_DEFAULT_BRANCH` only if auto-detection does not match your default branch (empty = detect `main` vs `master` locally).
 

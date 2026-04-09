@@ -39,6 +39,10 @@ class RunSnapshot(BaseModel):
     diff: str | None = None
     pr_url: str | None = None
     error: str | None = None
+    # Structured agent outputs (PDF contracts: code notes; test paths + coverage focus)
+    code_notes: list[str] = Field(default_factory=list)
+    test_paths: list[str] = Field(default_factory=list)
+    coverage_focus: list[str] = Field(default_factory=list)
 
 
 class PlannerOutput(BaseModel):
@@ -47,6 +51,20 @@ class PlannerOutput(BaseModel):
     tasks: list[str] = Field(default_factory=list)
     files: list[str] = Field(default_factory=list)
     risks: list[str] = Field(default_factory=list)
+
+
+class CodeAgentOutput(BaseModel):
+    """Code agent JSON contract (unified diff + reviewer notes)."""
+
+    unified_diff: str = Field(min_length=1)
+    notes: list[str] = Field(default_factory=list)
+
+
+class TestAgentOutput(BaseModel):
+    """Test agent JSON contract (paths to test files + scenarios)."""
+
+    tests: list[str] = Field(default_factory=list)
+    coverage_focus: list[str] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):
