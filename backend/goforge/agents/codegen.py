@@ -16,6 +16,8 @@ _SYSTEM = (
     "that applies cleanly to the repository. Paths in the diff must be repo-relative "
     "(e.g. internal/foo/bar.go). Do not include markdown fences. "
     "Prefer minimal changes. If tests need updates, include *_test.go hunks in the same diff. "
+    "The change must compile: `go build ./...` and tests must pass: `go test ./...`. "
+    "Avoid hallucinated imports or missing symbols. "
     "Return JSON only with key unified_diff (string). The diff must be valid unified diff text."
 )
 

@@ -18,22 +18,27 @@ function lineClass(line: string): string {
 
 type UnifiedDiffViewProps = {
   text: string;
+  /** Shown in the header row (e.g. current file path). */
+  label?: string;
   className?: string;
 };
 
-export function UnifiedDiffView({ text, className }: UnifiedDiffViewProps) {
+export function UnifiedDiffView({ text, label, className }: UnifiedDiffViewProps) {
   const lines = text.split("\n");
   return (
     <div
       className={cn(
-        "overflow-auto rounded-lg border border-white/[0.08] bg-[#070a12]/90 font-mono text-[11px] leading-relaxed sm:text-xs",
+        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-white/[0.08] bg-[#070a12]/90 font-mono text-[11px] leading-relaxed sm:text-xs",
         className
       )}
     >
-      <div className="border-b border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[0.65rem] text-zinc-500">
-        Unified diff
+      <div className="shrink-0 border-b border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[0.65rem] text-zinc-500">
+        <span className="text-zinc-500">Unified diff</span>
+        {label ? (
+          <span className="ml-2 font-medium text-zinc-300">· {label}</span>
+        ) : null}
       </div>
-      <div className="max-h-[min(360px,50vh)] p-2">
+      <div className="min-h-0 flex-1 overflow-auto p-2">
         {lines.map((line, i) => (
           <div
             key={`${i}-${line.slice(0, 12)}`}

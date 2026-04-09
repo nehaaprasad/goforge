@@ -8,7 +8,7 @@ from pathlib import Path
 
 from goforge.default_diff import MOCK_DIFF
 from goforge.repo.workspace import ensure_git_repo, git_apply_unified, git_reset_clean
-from goforge.validation.go_checks import run_go_test
+from goforge.validation.go_checks import run_go_build, run_go_test
 
 _GO_MOD = """module example.com/sandbox
 
@@ -58,6 +58,9 @@ class TestWorkspace(unittest.IsolatedAsyncioTestCase):
 
             acode, aout = await git_apply_unified(str(root), MOCK_DIFF)
             self.assertEqual(acode, 0, msg=aout)
+
+            bcode, bout = await run_go_build(str(root))
+            self.assertEqual(bcode, 0, msg=bout)
 
             tcode, tout = await run_go_test(str(root))
             self.assertEqual(tcode, 0, msg=tout)

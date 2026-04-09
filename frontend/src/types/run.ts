@@ -13,12 +13,15 @@ export type ApiStepName =
   | "Validation"
   | "PR Creation";
 
+/** Step row from the API snapshot. */
+export type ApiStepState = { name: ApiStepName; status: ApiStepStatus };
+
 export type RunSnapshot = {
   run_id: string;
   task: string;
   status: ApiRunStatus;
   repo_root: string;
-  steps: { name: ApiStepName; status: ApiStepStatus }[];
+  steps: ApiStepState[];
   logs: string[];
   diff: string | null;
   pr_url: string | null;

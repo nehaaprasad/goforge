@@ -10,7 +10,7 @@ from goforge.github.pr import try_create_github_pr
 from goforge.repo.workspace import ensure_git_repo, git_apply_unified, git_reset_clean
 from goforge.run_store import RunRecord, store
 from goforge.schemas import PlannerOutput, StepStatus
-from goforge.validation.go_checks import run_go_test
+from goforge.validation.go_checks import run_go_build, run_go_test
 
 
 async def _delay(seconds: float) -> None:
@@ -215,6 +215,27 @@ async def run_mock_pipeline(rec: RunRecord) -> None:
                 await store.emit(rec.run_id, rec.snapshot())
                 return
 
+            await _append_log(rec, "Validation: running go build ./...")
+
+            bcode, bout = await run_go_build(rec.repo_root)
+            for line in bout.splitlines() if bout.strip() else ["(no output)"]:
+                await _append_log(rec, line)
+
+            if bcode != 0:
+                failure = f"go build ./... exited with code {bcode}\n{bout}"
+                if attempt + 1 < max_attempts:
+                    await _append_log(
+                        rec,
+                        "Validation: go build failed — will retry with a new patch.",
+                    )
+                    continue
+                _set_step_status(rec, "Validation", "failed")
+                rec.status = "failed"
+                rec.error = failure
+                rec.pr_url = None
+                await store.emit(rec.run_id, rec.snapshot())
+                return
+
             await _append_log(rec, "Validation: running go test ./...")
 
             tcode, output = await run_go_test(rec.repo_root)
@@ -268,7 +289,7 @@ async def run_mock_pipeline(rec: RunRecord) -> None:
         rec.error = None
         await _append_log(
             rec,
-            "Pipeline completed: patch applied, go test passed.",
+            "Pipeline completed: patch applied; go build and go test passed.",
         )
         await store.emit(rec.run_id, rec.snapshot())
 
