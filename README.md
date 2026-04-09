@@ -108,11 +108,12 @@ The landing mockups reflect the same PatchFlow layout model:
 The backend is a FastAPI service that owns run lifecycle and exposes the API contracts the UI will consume.
 
 ### What works today
-- `POST /api/run` creates a run against the local repo path and starts a **mock** multi-step pipeline (Planner → … → PR Creation).
-- `GET /api/run/{id}` returns the latest snapshot (steps, logs, mock diff).
-- `GET /api/run/{id}/stream` streams **SSE** snapshots as the mock pipeline advances.
+- `POST /api/run` creates a run against the local repo path and runs a **hybrid** pipeline: early stages are **mock** (Planner → Test Generation), then **real `go test ./...`** during **Validation** on `./sandbox-repo`.
+- `GET /api/run/{id}` returns the latest snapshot (steps, logs, mock diff, errors).
+- `GET /api/run/{id}/stream` streams **SSE** snapshots as the pipeline advances.
 - `GET /health` reports whether `./sandbox-repo` exists on disk.
 - `GET /api/pr/{id}` returns **501** until GitHub integration exists.
+- If **`go test ./...` fails**, the run ends in **`failed`** with Validation marked **`failed`** and logs containing the `go test` output.
 
 ### Configuration
 - `GOFORGE_REPO_ROOT`: absolute or relative path to the local Go repo (default: repository `sandbox-repo/` next to this README).
@@ -225,5 +226,5 @@ PatchFlow development follows these constraints:
 
 ## Notes
 
-- `sandbox-repo/` is intentionally committed as a placeholder for local-target execution in this first slice.
-- The frontend is ready for iterative refinement while backend orchestration is added.
+- `sandbox-repo/` is a **small real Go module** (see `go.mod` and `internal/greet/`) so `go test ./...` can pass in the Validation stage.
+- Planner/code/test agents remain **mock** until LLM integration; the **validation gate is real**.
