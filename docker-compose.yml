@@ -1,4 +1,4 @@
-# PatchFlow API: mount your sandbox repo and persist SQLite run state.
+# GoForage API: mount your sandbox repo and persist SQLite run state.
 # Usage: docker compose up --build
 services:
   goforge-api:
