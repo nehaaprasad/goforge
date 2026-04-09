@@ -140,6 +140,18 @@ cd backend
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
+### One-shot local verification
+From the repository root (after `backend/.venv` exists and `frontend/node_modules` are installed):
+
+```bash
+bash scripts/verify-patchflow.sh
+```
+
+This runs unit tests, an in-process API smoke check (`backend/scripts/smoke_api.py`), `npm run build` in `frontend/`, and `docker compose config` when Docker is available.
+
+### Manual UI check
+In two terminals: `cd backend && .venv/bin/uvicorn goforge.main:app --reload --host 127.0.0.1 --port 8000` and `cd frontend && npm run dev`. Open `http://localhost:3000/workflow`, run a task against the default sandbox repo (optional `repo_url` for remote clones).
+
 ### Production notes
 - **Run persistence**: snapshots are written to **SQLite** at `GOFORGE_DB_PATH` (default `backend/data/goforge.db`). After a restart, **`GET /api/run/{id}`** still returns completed/failed runs. In-flight runs (`queued` / `running`) are marked **failed** with *Run interrupted by server restart.*
 - **Disable persistence** (e.g. tests): `GOFORGE_PERSISTENCE_ENABLED=false`.
