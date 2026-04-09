@@ -14,11 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PatchFlow — Tickets to validated PRs for Go",
+  title: "GoForage — Tickets to validated PRs for Go",
   description:
     "Multi-agent orchestration that plans, codes, tests, validates, and prepares pull requests for Go monorepos.",
   openGraph: {
-    title: "PatchFlow",
+    title: "GoForage",
     description:
       "Turn engineering tickets into validated pull requests for Go monorepos.",
   },

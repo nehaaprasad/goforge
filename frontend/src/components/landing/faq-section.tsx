@@ -9,8 +9,8 @@ import {
 
 const faqs = [
   {
-    q: "Does PatchFlow replace developers?",
-    a: "No. It automates the repetitive path from ticket to validated diff and PR. Engineers stay in control of architecture, review, and merge—PatchFlow reduces toil, not judgment.",
+    q: "Does GoForage replace developers?",
+    a: "No. It automates the repetitive path from ticket to validated diff and PR. Engineers stay in control of architecture, review, and merge—GoForage reduces toil, not judgment.",
   },
   {
     q: "Does it support large Go monorepos?",
@@ -22,7 +22,7 @@ const faqs = [
   },
   {
     q: "Can it be extended to other languages?",
-    a: "The orchestration model is general, but PatchFlow is optimized for Go first—modules, tests, and tooling match what teams already trust. Other languages may come later as separate tracks.",
+    a: "The orchestration model is general, but GoForage is optimized for Go first—modules, tests, and tooling match what teams already trust. Other languages may come later as separate tracks.",
   },
 ] as const;
 
@@ -34,7 +34,7 @@ export function FaqSection() {
           Frequently asked questions
         </h2>
         <p className="mt-3 text-pretty text-zinc-400">
-          Straight answers about how PatchFlow fits into real engineering teams.
+          Straight answers about how GoForage fits into real engineering teams.
         </p>
       </div>
 

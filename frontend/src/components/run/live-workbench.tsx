@@ -166,11 +166,11 @@ export function LiveWorkbench() {
           </Link>
           <span className="text-zinc-600">/</span>
           <h1 className="text-lg font-semibold tracking-tight text-white">
-            PatchFlow · Run
+            GoForage · Run
           </h1>
         </div>
         <p className="max-w-md text-xs text-zinc-500">
-          Live view of the goforge API (
+          Live view of the GoForage API (
           <span className="font-mono text-zinc-400">{apiBase}</span>). Start the
           backend with{" "}
           <code className="rounded bg-white/[0.06] px-1 py-0.5 text-[0.65rem]">
@@ -194,22 +194,22 @@ export function LiveWorkbench() {
               <ChevronRight className="size-4 shrink-0 text-zinc-600" aria-hidden />
               <span className="truncate text-zinc-500">{repoSource}</span>
             </div>
-            <label className="sr-only" htmlFor="patchflow-task">
+            <label className="sr-only" htmlFor="goforage-task">
               Task
             </label>
             <input
-              id="patchflow-task"
+              id="goforage-task"
               type="text"
               value={task}
               onChange={(e) => setTask(e.target.value)}
               placeholder="Describe the change…"
               className="w-full min-w-0 rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-100 outline-none ring-indigo-500/40 placeholder:text-zinc-600 focus:border-indigo-500/50 focus:ring-2 sm:max-w-xl"
             />
-            <label className="sr-only" htmlFor="patchflow-repo-url">
+            <label className="sr-only" htmlFor="goforage-repo-url">
               Repository URL optional
             </label>
             <input
-              id="patchflow-repo-url"
+              id="goforage-repo-url"
               type="url"
               inputMode="url"
               autoComplete="off"

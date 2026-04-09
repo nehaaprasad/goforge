@@ -33,7 +33,7 @@ export function SiteFooter() {
         </nav>
       </div>
       <div className="border-t border-white/[0.04] py-6 text-center text-xs text-zinc-600">
-        © {new Date().getFullYear()} PatchFlow. All rights reserved.
+        © {new Date().getFullYear()} GoForage. All rights reserved.
       </div>
     </footer>
   );

@@ -16,7 +16,7 @@ export function FinalCta() {
             Ship faster without losing control.
           </h2>
           <p className="mt-3 text-pretty text-zinc-400">
-            PatchFlow keeps your ticket-to-PR path visible, validated, and ready
+            GoForage keeps your ticket-to-PR path visible, validated, and ready
             for review—starting with your local sandbox repo.
           </p>
           <Link

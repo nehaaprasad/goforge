@@ -19,7 +19,7 @@ export function Logo({ className, iconClassName }: LogoProps) {
         <GitBranch className="size-4 text-indigo-200" aria-hidden />
       </span>
       <span className="text-lg font-semibold tracking-tight text-white">
-        PatchFlow
+        GoForage
       </span>
     </div>
   );

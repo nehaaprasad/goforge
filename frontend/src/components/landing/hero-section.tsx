@@ -21,7 +21,7 @@ export function HeroSection() {
             Turn engineering tickets into validated pull requests.
           </h1>
           <p className="mt-5 max-w-lg text-pretty text-base leading-relaxed text-zinc-400 sm:text-lg">
-            PatchFlow uses multi-agent orchestration to plan, code, test, validate,
+            GoForage uses multi-agent orchestration to plan, code, test, validate,
             and prepare PRs for Go monorepos—so your team ships with confidence.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
