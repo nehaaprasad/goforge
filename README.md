@@ -10,6 +10,24 @@ The system is designed around **clarity, safety, and reviewability**:
 
 ---
 
+flowchart LR
+  subgraph browser [Browser]
+    UI[Workflow UI]
+  end
+  subgraph server [Your machine or server]
+    API[FastAPI backend]
+    Pipeline[PatchFlow pipeline]
+    Repo[Git + Go repo]
+    DB[(SQLite runs)]
+  end
+  UI -->|POST task| API
+  API --> Pipeline
+  Pipeline --> Repo
+  API --> DB
+  UI -->|SSE stream| API
+
+
+  
 ## Vision
 
 PatchFlow (within GoForge) acts as a developer cockpit for ticket-to-PR automation:
