@@ -26,7 +26,7 @@ export function HeroSection() {
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link
-              href="#demo"
+              href="/workflow"
               className={cn(
                 buttonVariants({ size: "lg" }),
                 "h-10 bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-500 px-6 text-sm font-semibold text-white shadow-xl shadow-indigo-500/25 hover:from-indigo-400 hover:via-violet-400 hover:to-cyan-400"
