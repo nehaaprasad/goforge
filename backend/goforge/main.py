@@ -65,10 +65,15 @@ async def health() -> HealthResponse:
     root = settings.repo_root.resolve()
     go_v, git_v = await get_go_git_versions()
     openai_ok = bool(settings.openai_api_key and str(settings.openai_api_key).strip())
+    clone_auth = bool(
+        (settings.remote_clone_token and str(settings.remote_clone_token).strip())
+        or (settings.github_token and str(settings.github_token).strip())
+    )
     return HealthResponse(
         repo_root=str(root),
         repo_exists=root.is_dir(),
         remote_clone_enabled=settings.remote_clone_enabled,
+        remote_clone_auth_configured=clone_auth,
         go_available=go_v is not None,
         git_available=git_v is not None,
         go_version_line=go_v,
@@ -100,6 +105,8 @@ async def create_run(body: RunCreateRequest) -> RunCreateResponse:
                 cache_root=settings.clone_cache_root,
                 allowed_hosts_raw=settings.remote_allowed_hosts,
                 timeout_s=settings.clone_timeout_s,
+                clone_token=settings.remote_clone_token,
+                github_token=settings.github_token,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -27,9 +27,8 @@ It is intentionally built with strict stage boundaries and machine-readable cont
 PatchFlow runs against either:
 
 - **Local path** — default `GOFORGE_REPO_ROOT` / `./sandbox-repo` (no network required for the default flow), or
-- **Public HTTPS remote** — `POST /api/run` with `{ "task": "...", "repo_url": "https://github.com/org/repo" }` (or use the optional URL field on `/workflow`). The server **validates** the host (allowlist + DNS checks) and **clones** into `GOFORGE_CLONE_CACHE_ROOT` (default `backend/data/clones/`), then runs the same pipeline on that tree.
-
-Private repos that need credentials are not supported via URL yet (use a local clone path).
+- **HTTPS remote** — `POST /api/run` with `{ "task": "...", "repo_url": "https://github.com/org/repo" }` (or the optional URL field on `/workflow`). The server **validates** the host (allowlist + DNS checks) and **clones** into `GOFORGE_CLONE_CACHE_ROOT` (default `backend/data/clones/`), then runs the same pipeline on that tree.
+- **Private remotes** — do not put tokens in `repo_url`. Set **`GOFORGE_REMOTE_CLONE_TOKEN`** (any allowed host) and/or **`GOFORGE_GITHUB_TOKEN`** (reused for `github.com` / `*.github.com` clones only). GitHub Enterprise on other domains needs **`GOFORGE_REMOTE_CLONE_TOKEN`**. The backend embeds credentials only for `git` subprocesses and resets `origin` to the credential-free URL afterward.
 
 ---
 
@@ -121,7 +120,7 @@ The backend is a FastAPI service that owns run lifecycle and exposes the API con
 
 ### Configuration
 - `GOFORGE_REPO_ROOT`: absolute or relative path to the local Go repo (default: repository `sandbox-repo/` next to this README).
-- **Remote clone** (optional): `GOFORGE_REMOTE_CLONE_ENABLED` (default `true`), `GOFORGE_CLONE_CACHE_ROOT`, `GOFORGE_CLONE_TIMEOUT_S`, `GOFORGE_REMOTE_ALLOWED_HOSTS` (comma-separated; empty defaults to `github.com`, `gitlab.com`, `bitbucket.org`, `codeberg.org`).
+- **Remote clone** (optional): `GOFORGE_REMOTE_CLONE_ENABLED` (default `true`), `GOFORGE_CLONE_CACHE_ROOT`, `GOFORGE_CLONE_TIMEOUT_S`, `GOFORGE_REMOTE_ALLOWED_HOSTS` (comma-separated; empty defaults to `github.com`, `gitlab.com`, `bitbucket.org`, `codeberg.org`), `GOFORGE_REMOTE_CLONE_TOKEN` (private repos, any host), and `GOFORGE_GITHUB_TOKEN` (private **GitHub** clones when set).
 
 **Optional LLM** (OpenAI-compatible Chat Completions JSON): when `GOFORGE_OPENAI_API_KEY` is set, **Planner**, **Code Generation**, and **Test Generation** call the API; otherwise the planner uses a deterministic mock plan, codegen uses a fixed sandbox **mock diff** (see `backend/goforge/default_diff.py`), and the test agent uses heuristics from the diff. Planner failures fall back to mock output with a **risk** line; codegen/test failures fall back to mock output with a log line. See `backend/.env.example` for timeouts and models.
 
@@ -144,7 +143,7 @@ cd backend
 ### Production notes
 - **Run persistence**: snapshots are written to **SQLite** at `GOFORGE_DB_PATH` (default `backend/data/goforge.db`). After a restart, **`GET /api/run/{id}`** still returns completed/failed runs. In-flight runs (`queued` / `running`) are marked **failed** with *Run interrupted by server restart.*
 - **Disable persistence** (e.g. tests): `GOFORGE_PERSISTENCE_ENABLED=false`.
-- **Health**: `GET /health` includes `persistence`, `database_path`, and `openai_key_configured`.
+- **Health**: `GET /health` includes `persistence`, `database_path`, `openai_key_configured`, `remote_clone_enabled`, and `remote_clone_auth_configured` (whether a server-side clone token / GitHub token is set).
 - **Docker**: from the repo root, `docker compose up --build` runs the API with `./sandbox-repo` mounted and a volume for `/data` (see `docker-compose.yml`). Install **Go** inside the image so `go build` / `go test` validation works without relying on the host.
 
 ---
@@ -223,7 +222,7 @@ npm run build
 - GitHub branch / commit / push / PR when token + repo configured
 
 ### Phase E (Ongoing / optional)
-- polish, observability, private-repo auth for remote URLs
+- polish, observability, self-hosted forge quirks (nonstandard auth)
 
 ---
 

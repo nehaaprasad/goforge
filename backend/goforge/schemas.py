@@ -82,6 +82,8 @@ class HealthResponse(BaseModel):
     persistence: Literal["sqlite", "memory"] = "sqlite"
     database_path: str | None = None
     openai_key_configured: bool = False
+    # True if a server-side token is available for private remote clones (not the token value).
+    remote_clone_auth_configured: bool = False
 
 
 class PRDetailsResponse(BaseModel):

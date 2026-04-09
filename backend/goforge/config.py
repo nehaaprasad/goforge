@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     clone_timeout_s: float = Field(default=600.0, ge=30.0, le=7200.0)
     # Comma-separated hostnames (empty = github.com, gitlab.com, bitbucket.org, codeberg.org).
     remote_allowed_hosts: str = ""
+    # Optional PAT for private HTTPS git clones (POST repo_url). Host-specific URL embedding in remote_clone.
+    # If unset, GOFORGE_GITHUB_TOKEN is reused only for github.com / *.github.com hosts.
+    remote_clone_token: str | None = None
 
     # Optional GitHub PR (fine-grained or classic PAT with repo scope). If unset, PR step logs skip.
     github_token: str | None = None

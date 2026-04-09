@@ -10,7 +10,7 @@ import shutil
 import socket
 import subprocess
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse, urlunparse
 
 logger = logging.getLogger("goforge.remote_clone")
 
@@ -79,7 +79,8 @@ def validate_remote_git_url(url: str, *, allowed_hosts: frozenset[str]) -> str:
 
     if parsed.username or parsed.password:
         raise ValueError(
-            "Credentials in the URL are not allowed; use a public clone URL."
+            "Credentials in the URL are not allowed. "
+            "Configure GOFORGE_REMOTE_CLONE_TOKEN or GOFORGE_GITHUB_TOKEN on the server instead."
         )
 
     host = parsed.hostname
@@ -107,6 +108,54 @@ def validate_remote_git_url(url: str, *, allowed_hosts: frozenset[str]) -> str:
     return f"https://{host}{path}"
 
 
+def _host_is_github_family(host: str) -> bool:
+    h = host.lower()
+    return h == "github.com" or h.endswith(".github.com")
+
+
+def _select_clone_token(
+    host: str,
+    *,
+    clone_token: str | None,
+    github_token: str | None,
+) -> str | None:
+    ct = (clone_token or "").strip()
+    if ct:
+        return ct
+    gh = (github_token or "").strip()
+    if gh and _host_is_github_family(host):
+        return gh
+    return None
+
+
+def build_authenticated_git_url(public_https_url: str, token: str) -> str:
+    """
+    Embed credentials for one-shot git HTTPS operations. Never log the return value.
+    Patterns follow common git host conventions (PAT / OAuth).
+    """
+    t = token.strip()
+    if not t:
+        return public_https_url
+    p = urlparse(public_https_url)
+    host = (p.hostname or "").lower()
+    safe_t = quote(t, safe="")
+
+    if _host_is_github_family(host):
+        userinfo = f"x-access-token:{safe_t}"
+    elif host == "gitlab.com" or host.endswith(".gitlab.com"):
+        userinfo = f"oauth2:{safe_t}"
+    elif "bitbucket.org" in host:
+        userinfo = f"x-token-auth:{safe_t}"
+    elif "codeberg.org" in host:
+        userinfo = f"{safe_t}"
+    else:
+        userinfo = f"git:{safe_t}"
+
+    host_port = f"{host}:{p.port}" if p.port else host
+    netloc = f"{userinfo}@{host_port}"
+    return urlunparse((p.scheme, netloc, p.path, "", "", ""))
+
+
 def _run_git(
     args: list[str],
     *,
@@ -130,26 +179,61 @@ def _run_git(
 
 
 def ensure_cached_clone(
-    normalized_url: str,
+    public_url: str,
     *,
     cache_root: Path,
     timeout_s: float,
+    auth_url: str | None,
 ) -> Path:
     """
     Clone or fast-forward update a shallow clone under cache_root.
-    Returns the absolute path to the repository root.
+    Cache key is derived from public_url only (no credentials).
+    After operations with auth_url, origin is reset to public_url so tokens are not left in .git/config.
     """
-    key = hashlib.sha256(normalized_url.encode("utf-8")).hexdigest()[:32]
+    key = hashlib.sha256(public_url.encode("utf-8")).hexdigest()[:32]
     repo_dir = (cache_root / key).resolve()
     cache_root.mkdir(parents=True, exist_ok=True)
+    effective = auth_url if auth_url else public_url
 
     if (repo_dir / ".git").is_dir():
         logger.info("Updating cached clone: %s", repo_dir)
         try:
-            _run_git(
-                ["git", "-C", str(repo_dir), "pull", "--ff-only"],
-                timeout_s=timeout_s,
-            )
+            if auth_url:
+                try:
+                    _run_git(
+                        [
+                            "git",
+                            "-C",
+                            str(repo_dir),
+                            "remote",
+                            "set-url",
+                            "origin",
+                            auth_url,
+                        ],
+                        timeout_s=timeout_s,
+                    )
+                    _run_git(
+                        ["git", "-C", str(repo_dir), "pull", "--ff-only"],
+                        timeout_s=timeout_s,
+                    )
+                finally:
+                    _run_git(
+                        [
+                            "git",
+                            "-C",
+                            str(repo_dir),
+                            "remote",
+                            "set-url",
+                            "origin",
+                            public_url,
+                        ],
+                        timeout_s=timeout_s,
+                    )
+            else:
+                _run_git(
+                    ["git", "-C", str(repo_dir), "pull", "--ff-only"],
+                    timeout_s=timeout_s,
+                )
         except RuntimeError:
             logger.warning("git pull failed; recloning into %s", repo_dir)
             shutil.rmtree(repo_dir, ignore_errors=True)
@@ -158,11 +242,24 @@ def ensure_cached_clone(
         if repo_dir.exists():
             shutil.rmtree(repo_dir, ignore_errors=True)
         repo_dir.parent.mkdir(parents=True, exist_ok=True)
-        logger.info("Cloning %s -> %s", normalized_url, repo_dir)
+        logger.info("Cloning into %s", repo_dir)
         _run_git(
-            ["git", "clone", "--depth", "1", normalized_url, str(repo_dir)],
+            ["git", "clone", "--depth", "1", effective, str(repo_dir)],
             timeout_s=timeout_s,
         )
+        if auth_url:
+            _run_git(
+                [
+                    "git",
+                    "-C",
+                    str(repo_dir),
+                    "remote",
+                    "set-url",
+                    "origin",
+                    public_url,
+                ],
+                timeout_s=timeout_s,
+            )
 
     return repo_dir
 
@@ -173,12 +270,23 @@ def resolve_remote_repo_root(
     cache_root: Path,
     allowed_hosts_raw: str,
     timeout_s: float,
+    clone_token: str | None = None,
+    github_token: str | None = None,
 ) -> Path:
     """Validate URL, ensure clone exists, return absolute repo path."""
     allowed = _parse_allowed_hosts(allowed_hosts_raw)
     normalized = validate_remote_git_url(repo_url, allowed_hosts=allowed)
+    parsed = urlparse(normalized)
+    host = parsed.hostname or ""
+    tok = _select_clone_token(
+        host,
+        clone_token=clone_token,
+        github_token=github_token,
+    )
+    auth: str | None = build_authenticated_git_url(normalized, tok) if tok else None
     return ensure_cached_clone(
         normalized,
         cache_root=cache_root,
         timeout_s=timeout_s,
+        auth_url=auth,
     )
