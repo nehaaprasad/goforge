@@ -1,6 +1,6 @@
 # GoForge
 
- GoForge is an AI-assisted engineering workflow that converts natural-language tickets into validated pull requests for Go monorepos.
+GoForge (repository **goforge**) is an AI-assisted engineering workflow platform. Its first product surface, **PatchFlow**, converts natural-language tickets into validated pull requests for Go monorepos.
 
 The system is designed around **clarity, safety, and reviewability**:
 - plan the work first
@@ -12,7 +12,7 @@ The system is designed around **clarity, safety, and reviewability**:
 
 ## Vision
 
-GoForge acts as a developer cockpit for ticket-to-PR automation:
+PatchFlow (within GoForge) acts as a developer cockpit for ticket-to-PR automation:
 
 `Ticket -> Planner -> Context Retrieval -> Code Agent -> Test Agent -> Validation -> PR`
 
@@ -53,22 +53,18 @@ Remote repository ingestion and clone support are planned for a later phase.
 
 ```text
 goforge/
-  frontend/         # PatchFlow landing + UI shell (implemented)
-  sandbox-repo/     # Local Go repo target for first vertical slice
+  frontend/         # PatchFlow marketing + UI shell (implemented)
+  backend/          # FastAPI orchestration API (skeleton + mock pipeline)
+  sandbox-repo/     # Local Go repo target for the first vertical slice
 ```
 
-As backend orchestration is added, expected top-level structure:
+Planned expansion (later phases):
 
 ```text
 goforge/
-  frontend/
   backend/
-    api/
-    agents/
-    rag/
-    validation/
-    github/
-  sandbox-repo/
+    goforge/        # Python package (current)
+    # future: agents/, rag/, validation/, github/ modules as logic grows
 ```
 
 ---
@@ -95,6 +91,30 @@ The mockups reflect the intended PatchFlow app model:
 
 ---
 
+## Backend (Implemented — Phase B skeleton)
+
+The backend is a FastAPI service that owns run lifecycle and exposes the API contracts the UI will consume.
+
+### What works today
+- `POST /api/run` creates a run against the local repo path and starts a **mock** multi-step pipeline (Planner → … → PR Creation).
+- `GET /api/run/{id}` returns the latest snapshot (steps, logs, mock diff).
+- `GET /api/run/{id}/stream` streams **SSE** snapshots as the mock pipeline advances.
+- `GET /health` reports whether `./sandbox-repo` exists on disk.
+- `GET /api/pr/{id}` returns **501** until GitHub integration exists.
+
+### Configuration
+- `GOFORGE_REPO_ROOT`: absolute or relative path to the local Go repo (default: repository `sandbox-repo/` next to this README).
+
+### Run locally
+```bash
+cd backend
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/uvicorn goforge.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+---
+
 ## Planned Backend Workflow
 
 ### Stage Pipeline
@@ -115,12 +135,16 @@ The mockups reflect the intended PatchFlow app model:
 
 ---
 
-## API Shape (Planned)
+## API (current + planned)
 
-- `POST /api/run` -> start run, return run ID
-- `GET /api/run/:id` -> run state + aggregated output
-- `GET /api/run/:id/stream` -> live updates (logs/status)
-- `GET /api/pr/:id` -> PR details when available
+Implemented:
+- `POST /api/run` — start run, return run ID
+- `GET /api/run/{id}` — run snapshot
+- `GET /api/run/{id}/stream` — SSE stream of snapshots
+- `GET /health` — repo path probe
+
+Stub:
+- `GET /api/pr/{id}` — returns `501` until PR automation ships
 
 ---
 
@@ -129,6 +153,7 @@ The mockups reflect the intended PatchFlow app model:
 ### Prerequisites
 - Node.js 20+
 - npm
+- Python 3.11+ (for backend)
 
 ### Run frontend
 ```bash
@@ -152,10 +177,10 @@ npm run build
 - frontend layout and storytelling surface
 - product mock sections aligned to orchestrator workflow
 
-### Phase B
+### Phase B (In progress / baseline done)
 - FastAPI backend skeleton
-- run lifecycle state manager
-- mock run stream to frontend
+- run lifecycle + in-memory store
+- mock pipeline + SSE stream
 
 ### Phase C
 - planner -> code -> test pipeline integration
