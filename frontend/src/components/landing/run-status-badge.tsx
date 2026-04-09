@@ -1,7 +1,13 @@
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
-type RunStatus = "idle" | "running" | "done" | "failed";
+type RunStatus =
+  | "idle"
+  | "queued"
+  | "running"
+  | "done"
+  | "complete"
+  | "failed";
 
 const styles: Record<
   RunStatus,
@@ -12,6 +18,11 @@ const styles: Record<
     className:
       "border-zinc-600/80 bg-zinc-800/80 text-zinc-300 shadow-none",
   },
+  queued: {
+    label: "Queued",
+    className:
+      "border-zinc-600/80 bg-zinc-800/80 text-zinc-300 shadow-none",
+  },
   running: {
     label: "Running",
     className:
@@ -19,6 +30,11 @@ const styles: Record<
   },
   done: {
     label: "Done",
+    className:
+      "border-emerald-500/35 bg-emerald-500/10 text-emerald-200",
+  },
+  complete: {
+    label: "Complete",
     className:
       "border-emerald-500/35 bg-emerald-500/10 text-emerald-200",
   },
