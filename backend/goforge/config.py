@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     planner_timeout_s: float = 120.0
     codegen_timeout_s: float = 180.0
 
+    # RAG: embed chunks and retrieve top-k (requires same API key as LLM calls).
+    rag_enabled: bool = True
+    openai_embedding_model: str = "text-embedding-3-small"
+    rag_top_k: int = Field(default=5, ge=1, le=20)
+    rag_chunk_chars: int = Field(default=1800, ge=400, le=12_000)
+    rag_max_chunks_embed: int = Field(default=120, ge=8, le=400)
+
     # Validation: apply + go test retries when LLM is enabled (mock path uses 1 attempt).
     validation_max_attempts: int = Field(default=3, ge=1, le=20)
 

@@ -7,6 +7,7 @@ from goforge.agents.planner import run_planner
 from goforge.agents.test_agent import run_test_agent
 from goforge.config import settings
 from goforge.context.bundle import build_context_bundle
+from goforge.rag.pipeline import build_rag_context_section
 from goforge.github.pr import try_create_github_pr
 from goforge.repo.workspace import ensure_git_repo, git_apply_unified, git_reset_clean
 from goforge.run_store import RunRecord, store
@@ -67,7 +68,30 @@ async def _run_context_step(rec: RunRecord, plan: PlannerOutput) -> str:
     await _delay(0.08)
 
     await _append_log(rec, "Context: loading planner-selected paths (bounded).")
+
+    rag_section, rag_status = await build_rag_context_section(
+        rec.repo_root, plan, rec.task
+    )
+    if rag_status == "rag":
+        await _append_log(
+            rec,
+            f"RAG: retrieved top-{settings.rag_top_k} chunks (embedding similarity).",
+        )
+    elif rag_status == "skipped_no_key":
+        await _append_log(
+            rec,
+            "RAG: skipped — set GOFORGE_OPENAI_API_KEY to enable embedding retrieval.",
+        )
+    elif rag_status == "skipped_disabled":
+        await _append_log(rec, "RAG: disabled (GOFORGE_RAG_ENABLED=false).")
+    elif rag_status == "skipped_no_chunks":
+        await _append_log(rec, "RAG: no .go chunks to index.")
+    elif rag_status.startswith("error"):
+        await _append_log(rec, f"RAG: failed ({rag_status}) — using file bundle only.")
+
     bundle = build_context_bundle(rec.repo_root, plan)
+    if rag_section:
+        bundle = rag_section + "\n\n" + bundle
     await _append_log(rec, f"Context: bundle size ~{len(bundle)} characters (UTF-8).")
 
     _set_step_status(rec, "Context Retrieval", "done")
