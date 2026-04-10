@@ -4,6 +4,11 @@ sandbox-repo/.git/
 # SQLite run store (production / local)
 backend/data/
 
+# Local secrets — never commit API keys
+backend/.env
+.env
+.env.local
+
 # Python (backend)
 backend/.venv/
 **/__pycache__/
